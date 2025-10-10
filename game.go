@@ -9,6 +9,12 @@ import (
 	"github.com/charmbracelet/ssh"
 )
 
+const playerArt = `@YOU`
+
+type playerStats struct {
+	hp, mana, speed, magic, strength int
+}
+
 type room struct{}
 
 type model struct {
@@ -17,6 +23,7 @@ type model struct {
 	playerMapX int
 	playerMapY int
 	worldMap   [][]*room
+	stats      playerStats
 }
 
 func teaHandler(s ssh.Session) (tea.Model, []tea.ProgramOption) {
@@ -36,6 +43,13 @@ func teaHandler(s ssh.Session) (tea.Model, []tea.ProgramOption) {
 		playerMapX: 2,
 		playerMapY: 2,
 		worldMap:   worldMap,
+		stats: playerStats{
+			hp:       100,
+			mana:     25,
+			speed:    10,
+			magic:    12,
+			strength: 12,
+		},
 	}
 	return initialModel, []tea.ProgramOption{tea.WithAltScreen()}
 }
@@ -87,6 +101,10 @@ func (m model) View() string {
 		return ""
 	}
 
+	panelStyle := lipgloss.NewStyle().
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(lipgloss.Color("63"))
+
 	cameraStyle := lipgloss.NewStyle().
 		Border(lipgloss.RoundedBorder()).
 		BorderForeground(lipgloss.Color("63"))
@@ -115,17 +133,31 @@ func (m model) View() string {
 	}
 
 	mapContent := lipgloss.JoinVertical(lipgloss.Center, mapRows...)
-	mapView := mapStyle.Width(30).Align(lipgloss.Center).Render(mapContent)
+	mapView := mapStyle.Width(60).Align(lipgloss.Center).Render(mapContent)
 
 	cameraContent := fmt.Sprintf("\n\nYou are at (%d, %d).\n\nHere you will find the content of the room", m.playerMapX, m.playerMapY)
 	cameraWidth := m.width - lipgloss.Width(mapView) - 4
 	cameraView := cameraStyle.Width(cameraWidth).Height(lipgloss.Height(mapView) - 2).Render(cameraContent)
 
+	statsArt := lipgloss.NewStyle().Foreground(lipgloss.Color("214")).Bold(true).Margin(1, 2).Render(playerArt)
+	statsText := fmt.Sprintf(
+		"HP: %d\nMana: %d\nSpeed: %d\nMagic: %d\nStrength: %d",
+		m.stats.hp,
+		m.stats.mana,
+		m.stats.speed,
+		m.stats.magic,
+		m.stats.strength,
+	)
+	statsContent := lipgloss.JoinHorizontal(lipgloss.Top, statsArt, statsText)
+	statsView := panelStyle.Width(cameraWidth).Render(statsContent)
+
+	leftPanel := lipgloss.JoinVertical(lipgloss.Left, cameraView, statsView)
+
 	help := lipgloss.NewStyle().
 		Foreground(lipgloss.Color("240")).
 		Render("Arrows/wasd: move | 'q': quit")
 
-	mainView := lipgloss.JoinHorizontal(lipgloss.Top, cameraView, mapView)
+	mainView := lipgloss.JoinHorizontal(lipgloss.Top, leftPanel, mapView)
 	finalView := lipgloss.JoinVertical(lipgloss.Left, mainView, help)
 
 	return finalView
