@@ -56,10 +56,15 @@ Este proyecto es una aplicación de Go que utiliza la suite de herramientas de C
 ```
 .
 ├── .gitignore
-├── README.md
-├── game.go         # Lógica principal del juego y la interfaz de usuario (TUI)
-├── go.mod          # Archivo de módulos de Go para gestionar dependencias
+├── go.mod
 ├── go.sum
 ├── main.go         # Punto de entrada, configuración y ejecución del servidor SSH
-└── ssh_host_key    # (Generado en el primer arranque) Clave de host para el servidor SSH
+├── README.md
+└── game/
+    ├── app.go      # Aplicación principal de Bubble Tea y gestión de estados
+    ├── gameplay.go # Lógica del juego principal, movimiento y renderizado
+    ├── loading.go  # Lógica y renderizado de la pantalla de carga
+    ├── map.go      # Generación procedural del mapa
+    ├── menu.go     # Lógica y renderizado del menú principal
+    └── model.go    # Estructuras de datos y modelos del juego
 ```

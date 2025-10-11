@@ -12,6 +12,8 @@ import (
 	"github.com/charmbracelet/wish"
 	"github.com/charmbracelet/wish/bubbletea"
 	"github.com/charmbracelet/wish/logging"
+
+	"ssh-dungeon-crawler/game"
 )
 
 const (
@@ -24,7 +26,7 @@ func main() {
 		wish.WithAddress(fmt.Sprintf("%s:%d", host, port)),
 		wish.WithHostKeyPath("ssh_host_key"),
 		wish.WithMiddleware(
-			bubbletea.Middleware(teaHandler),
+			bubbletea.Middleware(game.TeaHandler),
 			logging.Middleware(),
 		),
 	)

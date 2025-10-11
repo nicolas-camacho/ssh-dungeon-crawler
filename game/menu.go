@@ -1,0 +1,63 @@
+package game
+
+import (
+	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
+)
+
+func (m model) updateMenu(msg tea.Msg) (tea.Model, tea.Cmd) {
+	switch msg := msg.(type) {
+	case tea.KeyMsg:
+		switch msg.String() {
+		case "ctrl+c", "q":
+			return m, tea.Quit
+		case "up", "w":
+			if m.menuCursor > 0 {
+				m.menuCursor--
+			}
+		case "down", "s":
+			if m.menuCursor < 1 {
+				m.menuCursor++
+			}
+		case "enter":
+			if m.menuCursor == 0 {
+				m.state = stateGame
+				worldMap, startX, startY := generateMap(9, 9, 15)
+				m.worldMap = worldMap
+				m.playerMapX = startX
+				m.playerMapY = startY
+				m.stats = playerStats{
+					hp:       100,
+					mana:     50,
+					speed:    5,
+					magic:    5,
+					strength: 5,
+				}
+			} else {
+				return m, tea.Quit
+			}
+		}
+	}
+
+	return m, nil
+}
+
+func (m model) renderMenuView() string {
+	title := "SSH Dungeon Crawler"
+
+	var start, exit string
+	if m.menuCursor == 0 {
+		start = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("214")).Render("> Start Game")
+		exit = "  Exit"
+	} else {
+		start = "  Start Game"
+		exit = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("214")).Render("> Exit")
+	}
+
+	menu := lipgloss.JoinVertical(lipgloss.Left, start, exit)
+	help := lipgloss.NewStyle().Faint(true).Render("Arrows: navigation | 'enter': select")
+
+	content := lipgloss.JoinVertical(lipgloss.Center, title, "", menu, "", help)
+
+	return lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center, content)
+}
