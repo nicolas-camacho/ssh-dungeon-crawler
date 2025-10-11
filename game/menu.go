@@ -43,19 +43,19 @@ func (m model) updateMenu(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m model) renderMenuView() string {
-	title := "SSH Dungeon Crawler"
+	title := m.styles.Title.Render("SSH Dungeon Crawler")
 
 	var start, exit string
 	if m.menuCursor == 0 {
-		start = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("214")).Render("> Start Game")
+		start = m.styles.Selected.Render("> Start Game")
 		exit = "  Exit"
 	} else {
 		start = "  Start Game"
-		exit = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("214")).Render("> Exit")
+		exit = m.styles.Selected.Render("> Exit")
 	}
 
 	menu := lipgloss.JoinVertical(lipgloss.Left, start, exit)
-	help := lipgloss.NewStyle().Faint(true).Render("Arrows: navigation | 'enter': select")
+	help := m.styles.Faint.Render("Arrows: navigation | 'enter': select")
 
 	content := lipgloss.JoinVertical(lipgloss.Center, title, "", menu, "", help)
 

@@ -1,15 +1,23 @@
 package game
 
 import (
+	"github.com/charmbracelet/bubbles/progress"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/ssh"
 )
 
 func TeaHandler(s ssh.Session) (tea.Model, []tea.ProgramOption) {
 
+	prog := progress.New(
+		progress.WithGradient(string(orange), string(indigo)),
+		progress.WithoutPercentage(),
+	)
+
 	initialModel := model{
 		state:      stateLoading,
 		menuCursor: 0,
+		progress:   prog,
+		styles:     newStyles(),
 	}
 
 	return initialModel, []tea.ProgramOption{tea.WithAltScreen()}

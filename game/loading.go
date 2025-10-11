@@ -1,9 +1,9 @@
 package game
 
 import (
-	"strings"
 	"time"
 
+	"github.com/charmbracelet/bubbles/progress"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 )
@@ -24,22 +24,25 @@ func (m model) updateLoading(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tea.Quit
 		}
 	case tickMsg:
-		if m.loadingProgress >= 1.0 {
+		if m.progress.Percent() >= 1.0 {
 			m.state = stateMenu
 			return m, nil
 		}
-		m.loadingProgress += 0.01
-		return m, tickCmd()
+		progressCmd := m.progress.IncrPercent(0.02)
+		return m, tea.Batch(tickCmd(), progressCmd)
+	case progress.FrameMsg:
+		progressModel, cmd := m.progress.Update(msg)
+		m.progress = progressModel.(progress.Model)
+		return m, cmd
 	}
+
 	return m, nil
 }
 
 func (m model) renderLoadingView() string {
-	title := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("228")).Render("SSH Dungeon Crawler")
+	title := m.styles.Title.Render("SSH Dungeon Crawler")
 
-	barWidth := m.width / 2
-	progress := int(m.loadingProgress * float64(barWidth))
-	progressBar := strings.Repeat("█", progress) + strings.Repeat("░", barWidth-progress)
+	progressBar := m.progress.View()
 
 	content := lipgloss.JoinVertical(lipgloss.Center, title, "", progressBar)
 

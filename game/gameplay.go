@@ -38,19 +38,6 @@ func (m model) updateGame(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m model) renderGameView() string {
-	panelStyle := lipgloss.NewStyle().
-		Border(lipgloss.RoundedBorder()).
-		BorderForeground(lipgloss.Color("63"))
-
-	cameraStyle := lipgloss.NewStyle().
-		Border(lipgloss.RoundedBorder()).
-		BorderForeground(lipgloss.Color("63"))
-
-	mapStyle := lipgloss.NewStyle().
-		Border(lipgloss.DoubleBorder()).
-		BorderForeground(lipgloss.Color("57"))
-
-	playerCell := lipgloss.NewStyle().Width(3).Align(lipgloss.Center).Foreground(lipgloss.Color("214")).SetString("[@]")
 	emptyCell := lipgloss.NewStyle().Width(3).SetString(" ")
 
 	var mapRows []string
@@ -58,11 +45,14 @@ func (m model) renderGameView() string {
 		var mapRow strings.Builder
 		for x, room := range row {
 			if x == m.playerMapX && y == m.playerMapY {
-				mapRow.WriteString(playerCell.String())
+				mapRow.WriteString(m.styles.Player.String())
 			} else if room != nil {
 				symbol := room.getRoomSymbol()
-				style := lipgloss.NewStyle().Width(3).Align(lipgloss.Center).SetString(fmt.Sprintf("[%s]", symbol))
-				mapRow.WriteString(style.String())
+				style := m.styles.Room
+				if room.Type == Tresure || room.Type == Shop || room.Type == StairsUp {
+					style = style.Inherit(m.styles.RoomSpecial)
+				}
+				mapRow.WriteString(style.Render(fmt.Sprintf("[%s]", symbol)))
 			} else {
 				mapRow.WriteString(emptyCell.String())
 			}
@@ -71,12 +61,12 @@ func (m model) renderGameView() string {
 	}
 
 	mapContent := lipgloss.JoinVertical(lipgloss.Center, mapRows...)
-	mapView := mapStyle.Width(45).Align(lipgloss.Center).Render(mapContent)
+	mapView := m.styles.MapBorder.Width(45).Align(lipgloss.Center).Render(mapContent)
 
 	//mapHeight := lipgloss.Height(mapView)
 	cameraWidth := m.width - lipgloss.Width(mapView) - 4
 
-	statsArt := lipgloss.NewStyle().Foreground(lipgloss.Color("214")).Bold(true).Margin(1, 2).Render(playerArt)
+	statsArt := m.styles.StatsArt.Render(playerArt)
 	statsText := fmt.Sprintf(
 		"HP: %d\nMana: %d\nSpeed: %d\nMagic: %d\nStrength: %d",
 		m.stats.hp,
@@ -86,21 +76,17 @@ func (m model) renderGameView() string {
 		m.stats.strength,
 	)
 	statsContent := lipgloss.JoinHorizontal(lipgloss.Top, statsArt, statsText)
-	statsView := panelStyle.Width(cameraWidth).Render(statsContent)
+	statsView := m.styles.Panel.Width(cameraWidth).Render(statsContent)
 
 	cameraHeight := 2
 
 	currentRoom := m.worldMap[m.playerMapY][m.playerMapX]
 	cameraContent := fmt.Sprintf("%s", currentRoom.getRoomDescription())
-	cameraView := cameraStyle.Width(cameraWidth).Height(cameraHeight).Render(cameraContent)
+	cameraView := m.styles.Panel.Width(cameraWidth).Height(cameraHeight).Render(cameraContent)
 
 	leftPanel := lipgloss.JoinVertical(lipgloss.Left, cameraView, statsView)
 
-	help := lipgloss.NewStyle().
-		Foreground(lipgloss.Color("240")).
-		Padding(0, 1).
-		Render("Arrows/wasd: move | 'q': quit")
-
+	help := m.styles.Faint.Padding(0, 1).Render("Arrows/wasd: move | 'q': quit")
 	mainView := lipgloss.JoinHorizontal(lipgloss.Top, leftPanel, mapView)
 	finalView := lipgloss.JoinVertical(lipgloss.Left, mainView, help)
 

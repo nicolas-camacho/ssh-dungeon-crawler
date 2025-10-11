@@ -1,5 +1,7 @@
 package game
 
+import "github.com/charmbracelet/bubbles/progress"
+
 type gameState int
 
 const (
@@ -33,8 +35,9 @@ type model struct {
 	state  gameState
 	width  int
 	height int
+	styles styles
 
-	loadingProgress float64
+	progress progress.Model
 
 	menuCursor int
 
