@@ -17,7 +17,20 @@ type playerStats struct {
 	hp, mana, speed, magic, strength int
 }
 
-type room struct{}
+type roomType int
+
+const (
+	Empty roomType = iota
+	Enemy
+	Tresure
+	Shop
+	StairsUp
+	StairsDown
+)
+
+type room struct {
+	Type roomType
+}
 
 type model struct {
 	width      int
@@ -36,15 +49,17 @@ func generateMap(width, height, maxRooms int) ([][]*room, int, int) {
 		worldMap[i] = make([]*room, width)
 	}
 
-	startX := rand.Intn(width)
-	startY := rand.Intn(height)
-
+	startX, startY := width/2, height/2
 	currentX, currentY := startX, startY
 	roomsCreated := 0
 
+	commonRoomTypes := []roomType{Empty, Enemy, Tresure, Shop}
+
 	for roomsCreated < maxRooms {
 		if worldMap[currentY][currentX] == nil {
-			worldMap[currentY][currentX] = &room{}
+			randomIndex := rand.Intn(len(commonRoomTypes))
+			randomType := commonRoomTypes[randomIndex]
+			worldMap[currentY][currentX] = &room{Type: randomType}
 			roomsCreated++
 		}
 
@@ -63,6 +78,16 @@ func generateMap(width, height, maxRooms int) ([][]*room, int, int) {
 		if currentX+dx >= 0 && currentX+dx < width && currentY+dy >= 0 && currentY+dy < height {
 			currentX += dx
 			currentY += dy
+		}
+	}
+
+	worldMap[startY][startX].Type = Empty
+
+	for {
+		randX, randY := rand.Intn(width), rand.Intn(height)
+		if worldMap[randY][randX] != nil && (randX != startX || randY != startY) {
+			worldMap[randY][randX].Type = StairsUp
+			break
 		}
 	}
 
@@ -131,6 +156,42 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
+func (r *room) getRoomSymbol() string {
+	switch r.Type {
+	case Empty:
+		return " "
+	case Enemy:
+		return "E"
+	case Tresure:
+		return "T"
+	case Shop:
+		return "$"
+	case StairsUp:
+		return "▲"
+	case StairsDown:
+		return "▼"
+	default:
+		return "?"
+	}
+}
+
+func (r *room) getRoomDescription() string {
+	switch r.Type {
+	case Empty:
+		return "An empty room.\nHere you can rest."
+	case Enemy:
+		return "You feel the danger!\nGet ready for the battle."
+	case Tresure:
+		return "You see a big chest in the middle of the room!"
+	case Shop:
+		return "A suspicious merchan greets you.\n'I have some thing to offer you, take a look.'"
+	case StairsUp:
+		return "Some stone stairs, they take you to the darkness\n You wanna go up?"
+	default:
+		return "Unknown room type."
+	}
+}
+
 func (m model) View() string {
 	if m.width == 0 {
 		return ""
@@ -145,11 +206,10 @@ func (m model) View() string {
 		BorderForeground(lipgloss.Color("63"))
 
 	mapStyle := lipgloss.NewStyle().
-		Border(lipgloss.RoundedBorder()).
+		Border(lipgloss.DoubleBorder()).
 		BorderForeground(lipgloss.Color("57"))
 
-	roomCell := lipgloss.NewStyle().Width(3).Align(lipgloss.Center).SetString("[ ]")
-	playerCell := lipgloss.NewStyle().Inherit(roomCell).Foreground(lipgloss.Color("214")).SetString("[@]")
+	playerCell := lipgloss.NewStyle().Width(3).Align(lipgloss.Center).Foreground(lipgloss.Color("214")).SetString("[@]")
 	emptyCell := lipgloss.NewStyle().Width(3).SetString(" ")
 
 	var mapRows []string
@@ -159,7 +219,9 @@ func (m model) View() string {
 			if x == m.playerMapX && y == m.playerMapY {
 				mapRow.WriteString(playerCell.String())
 			} else if room != nil {
-				mapRow.WriteString(roomCell.String())
+				symbol := room.getRoomSymbol()
+				style := lipgloss.NewStyle().Width(3).Align(lipgloss.Center).SetString(fmt.Sprintf("[%s]", symbol))
+				mapRow.WriteString(style.String())
 			} else {
 				mapRow.WriteString(emptyCell.String())
 			}
@@ -168,11 +230,10 @@ func (m model) View() string {
 	}
 
 	mapContent := lipgloss.JoinVertical(lipgloss.Center, mapRows...)
-	mapView := mapStyle.Width(60).Align(lipgloss.Center).Render(mapContent)
+	mapView := mapStyle.Width(45).Align(lipgloss.Center).Render(mapContent)
 
-	cameraContent := fmt.Sprintf("\n\nYou are at (%d, %d).\n\nHere you will find the content of the room", m.playerMapX, m.playerMapY)
+	//mapHeight := lipgloss.Height(mapView)
 	cameraWidth := m.width - lipgloss.Width(mapView) - 4
-	cameraView := cameraStyle.Width(cameraWidth).Height(lipgloss.Height(mapView) - 2).Render(cameraContent)
 
 	statsArt := lipgloss.NewStyle().Foreground(lipgloss.Color("214")).Bold(true).Margin(1, 2).Render(playerArt)
 	statsText := fmt.Sprintf(
@@ -186,10 +247,17 @@ func (m model) View() string {
 	statsContent := lipgloss.JoinHorizontal(lipgloss.Top, statsArt, statsText)
 	statsView := panelStyle.Width(cameraWidth).Render(statsContent)
 
+	cameraHeight := 2
+
+	currentRoom := m.worldMap[m.playerMapY][m.playerMapX]
+	cameraContent := fmt.Sprintf("%s", currentRoom.getRoomDescription())
+	cameraView := cameraStyle.Width(cameraWidth).Height(cameraHeight).Render(cameraContent)
+
 	leftPanel := lipgloss.JoinVertical(lipgloss.Left, cameraView, statsView)
 
 	help := lipgloss.NewStyle().
 		Foreground(lipgloss.Color("240")).
+		Padding(0, 1).
 		Render("Arrows/wasd: move | 'q': quit")
 
 	mainView := lipgloss.JoinHorizontal(lipgloss.Top, leftPanel, mapView)
