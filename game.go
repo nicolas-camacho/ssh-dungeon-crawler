@@ -2,14 +2,16 @@ package main
 
 import (
 	"fmt"
+	"math/rand"
 	"strings"
+	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/ssh"
 )
 
-const playerArt = `@YOU`
+const playerArt = `👤YOU`
 
 type playerStats struct {
 	hp, mana, speed, magic, strength int
@@ -26,22 +28,54 @@ type model struct {
 	stats      playerStats
 }
 
-func teaHandler(s ssh.Session) (tea.Model, []tea.ProgramOption) {
-	worldMap := make([][]*room, 5)
+func generateMap(width, height, maxRooms int) ([][]*room, int, int) {
+	rand.New(rand.NewSource(time.Now().UnixNano()))
+
+	worldMap := make([][]*room, height)
 	for i := range worldMap {
-		worldMap[i] = make([]*room, 5)
+		worldMap[i] = make([]*room, width)
 	}
 
-	worldMap[2][2] = &room{}
-	worldMap[1][2] = &room{}
-	worldMap[3][2] = &room{}
-	worldMap[2][1] = &room{}
-	worldMap[2][3] = &room{}
-	worldMap[1][1] = &room{}
+	startX := rand.Intn(width)
+	startY := rand.Intn(height)
+
+	currentX, currentY := startX, startY
+	roomsCreated := 0
+
+	for roomsCreated < maxRooms {
+		if worldMap[currentY][currentX] == nil {
+			worldMap[currentY][currentX] = &room{}
+			roomsCreated++
+		}
+
+		dx, dy := 0, 0
+		switch rand.Intn(4) {
+		case 0:
+			dy = -1
+		case 1:
+			dy = 1
+		case 2:
+			dx = -1
+		case 3:
+			dx = 1
+		}
+
+		if currentX+dx >= 0 && currentX+dx < width && currentY+dy >= 0 && currentY+dy < height {
+			currentX += dx
+			currentY += dy
+		}
+	}
+
+	return worldMap, startX, startY
+}
+
+func teaHandler(s ssh.Session) (tea.Model, []tea.ProgramOption) {
+
+	worldMap, startX, startY := generateMap(9, 9, 15)
 
 	initialModel := model{
-		playerMapX: 2,
-		playerMapY: 2,
+		playerMapX: startX,
+		playerMapY: startY,
 		worldMap:   worldMap,
 		stats: playerStats{
 			hp:       100,
@@ -51,6 +85,7 @@ func teaHandler(s ssh.Session) (tea.Model, []tea.ProgramOption) {
 			strength: 12,
 		},
 	}
+
 	return initialModel, []tea.ProgramOption{tea.WithAltScreen()}
 }
 
