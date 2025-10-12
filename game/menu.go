@@ -22,8 +22,11 @@ func (m model) updateMenu(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "enter":
 			if m.menuCursor == 0 {
 				m.state = stateGame
-				worldMap, startX, startY := generateMap(9, 9, 15)
-				m.worldMap = worldMap
+
+				firstFloor, startX, startY := generateMap(9, 9, 15, 0)
+				m.floors = []floor{*firstFloor}
+				m.currentFloor = 0
+
 				m.playerMapX = startX
 				m.playerMapY = startY
 				m.stats = playerStats{
@@ -33,6 +36,8 @@ func (m model) updateMenu(msg tea.Msg) (tea.Model, tea.Cmd) {
 					magic:    5,
 					strength: 5,
 				}
+
+				m.floors[m.currentFloor].worldMap[startY][startX].Visited = true
 			} else {
 				return m, tea.Quit
 			}

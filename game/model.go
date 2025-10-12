@@ -1,6 +1,8 @@
 package game
 
-import "github.com/charmbracelet/bubbles/progress"
+import (
+	"github.com/charmbracelet/bubbles/progress"
+)
 
 type gameState int
 
@@ -28,7 +30,12 @@ const (
 )
 
 type room struct {
-	Type roomType
+	Type    roomType
+	Visited bool
+}
+
+type floor struct {
+	worldMap [][]*room
 }
 
 type model struct {
@@ -41,8 +48,9 @@ type model struct {
 
 	menuCursor int
 
-	playerMapX int
-	playerMapY int
-	worldMap   [][]*room
-	stats      playerStats
+	floors       []floor
+	currentFloor int
+	playerMapX   int
+	playerMapY   int
+	stats        playerStats
 }

@@ -9,6 +9,8 @@ import (
 )
 
 func (m model) updateGame(msg tea.Msg) (tea.Model, tea.Cmd) {
+	currentMap := m.floors[m.currentFloor].worldMap
+
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		m.width, m.height = msg.Width, msg.Height
@@ -17,20 +19,58 @@ func (m model) updateGame(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "ctrl+c", "q":
 			return m, tea.Quit
 		case "up", "w":
-			if m.playerMapY > 0 && m.worldMap[m.playerMapY-1][m.playerMapX] != nil {
+			if m.playerMapY > 0 && currentMap[m.playerMapY-1][m.playerMapX] != nil {
 				m.playerMapY--
+				currentMap[m.playerMapY][m.playerMapX].Visited = true
 			}
 		case "down", "s":
-			if m.playerMapY < len(m.worldMap)-1 && m.worldMap[m.playerMapY+1][m.playerMapX] != nil {
+			if m.playerMapY < len(currentMap)-1 && currentMap[m.playerMapY+1][m.playerMapX] != nil {
 				m.playerMapY++
+				currentMap[m.playerMapY][m.playerMapX].Visited = true
 			}
 		case "left", "a":
-			if m.playerMapX > 0 && m.worldMap[m.playerMapY][m.playerMapX-1] != nil {
+			if m.playerMapX > 0 && currentMap[m.playerMapY][m.playerMapX-1] != nil {
 				m.playerMapX--
+				currentMap[m.playerMapY][m.playerMapX].Visited = true
 			}
 		case "right", "d":
-			if m.playerMapX < len(m.worldMap[0])-1 && m.worldMap[m.playerMapY][m.playerMapX+1] != nil {
+			if m.playerMapX < len(currentMap[0])-1 && currentMap[m.playerMapY][m.playerMapX+1] != nil {
 				m.playerMapX++
+				currentMap[m.playerMapY][m.playerMapX].Visited = true
+			}
+		case "enter", "x":
+			currentRoom := currentMap[m.playerMapY][m.playerMapX]
+			switch currentRoom.Type {
+
+			case StairsUp:
+				m.currentFloor++
+				if m.currentFloor >= len(m.floors) {
+					newFloor, startX, startY := generateMap(9, 9, 15, m.currentFloor)
+					m.floors = append(m.floors, *newFloor)
+					m.playerMapX, m.playerMapY = startX, startY
+					m.floors[m.currentFloor].worldMap[startY][startX].Visited = true
+				} else {
+					for y, row := range m.floors[m.currentFloor].worldMap {
+						for x, room := range row {
+							if room != nil && room.Type == StairsDown {
+								m.playerMapX, m.playerMapY = x, y
+								break
+							}
+						}
+					}
+				}
+			case StairsDown:
+				if m.currentFloor > 0 {
+					m.currentFloor--
+					for y, row := range m.floors[m.currentFloor].worldMap {
+						for x, room := range row {
+							if room != nil && room.Type == StairsUp {
+								m.playerMapX, m.playerMapY = x, y
+								break
+							}
+						}
+					}
+				}
 			}
 		}
 	}
@@ -38,16 +78,25 @@ func (m model) updateGame(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m model) renderGameView() string {
+	currentMap := m.floors[m.currentFloor].worldMap
+	currentRoom := currentMap[m.playerMapY][m.playerMapX]
+
 	emptyCell := lipgloss.NewStyle().Width(3).SetString(" ")
 
 	var mapRows []string
-	for y, row := range m.worldMap {
+	for y, row := range currentMap {
 		var mapRow strings.Builder
 		for x, room := range row {
 			if x == m.playerMapX && y == m.playerMapY {
 				mapRow.WriteString(m.styles.Player.String())
 			} else if room != nil {
-				symbol := room.getRoomSymbol()
+				var symbol string
+				if room.Visited {
+					symbol = room.getRoomSymbol()
+				} else {
+					symbol = "?"
+				}
+
 				style := m.styles.Room
 				if room.Type == Tresure || room.Type == Shop || room.Type == StairsUp {
 					style = style.Inherit(m.styles.RoomSpecial)
@@ -80,13 +129,17 @@ func (m model) renderGameView() string {
 
 	cameraHeight := 2
 
-	currentRoom := m.worldMap[m.playerMapY][m.playerMapX]
 	cameraContent := fmt.Sprintf("%s", currentRoom.getRoomDescription())
 	cameraView := m.styles.Panel.Width(cameraWidth).Height(cameraHeight).Render(cameraContent)
 
 	leftPanel := lipgloss.JoinVertical(lipgloss.Left, cameraView, statsView)
 
-	help := m.styles.Faint.Padding(0, 1).Render("Arrows/wasd: move | 'q': quit")
+	helpText := "Arrows/wasd: move | 'q': quit"
+	if currentRoom.Type == StairsUp || currentRoom.Type == StairsDown {
+		helpText += " | 'enter'/'x': Use Stairs"
+	}
+	help := m.styles.Faint.Padding(0, 1).Render(helpText)
+
 	mainView := lipgloss.JoinHorizontal(lipgloss.Top, leftPanel, mapView)
 	finalView := lipgloss.JoinVertical(lipgloss.Left, mainView, help)
 
@@ -123,7 +176,9 @@ func (r *room) getRoomDescription() string {
 	case Shop:
 		return "A suspicious merchan greets you.\n'I have some thing to offer you, take a look.'"
 	case StairsUp:
-		return "Some stone stairs, they take you to the darkness\n You wanna go up?"
+		return "Some stone stairs, they take you to the darkness\nYou wanna go up?"
+	case StairsDown:
+		return "You can go down again"
 	default:
 		return "Unknown room type."
 	}
