@@ -35,6 +35,7 @@ func (m model) updateMenu(msg tea.Msg) (tea.Model, tea.Cmd) {
 					speed:    5,
 					magic:    5,
 					strength: 5,
+					defense:  5,
 				}
 
 				m.floors[m.currentFloor].worldMap[startY][startX].Visited = true

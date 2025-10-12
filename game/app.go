@@ -42,6 +42,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m.updateMenu(msg)
 	case stateGame:
 		return m.updateGame(msg)
+	case stateCombat:
+		return m.updateCombat(msg)
 	default:
 		return m, nil
 	}
@@ -59,6 +61,8 @@ func (m model) View() string {
 		return m.renderMenuView()
 	case stateGame:
 		return m.renderGameView()
+	case stateCombat:
+		return m.renderCombatView()
 	default:
 		return "Unknown state"
 	}

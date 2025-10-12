@@ -10,12 +10,13 @@ const (
 	stateLoading gameState = iota
 	stateMenu
 	stateGame
+	stateCombat
 )
 
 const playerArt = `👤YOU`
 
 type playerStats struct {
-	hp, mana, speed, magic, strength int
+	hp, mana, speed, magic, strength, defense int
 }
 
 type roomType int
@@ -38,6 +39,17 @@ type floor struct {
 	worldMap [][]*room
 }
 
+type CombatState struct {
+	player          *Player
+	enemies         []*Foe
+	turnOrder       []CombatEntity
+	turnIndex       int
+	actionState     combatActionState
+	actionCursor    int
+	subActionCursor int
+	targetCursor    int
+}
+
 type model struct {
 	state  gameState
 	width  int
@@ -53,4 +65,6 @@ type model struct {
 	playerMapX   int
 	playerMapY   int
 	stats        playerStats
+
+	combat *CombatState
 }

@@ -2,6 +2,7 @@ package game
 
 import (
 	"fmt"
+	"math/rand"
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -15,6 +16,8 @@ func (m model) updateGame(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.width, m.height = msg.Width, msg.Height
 	case tea.KeyMsg:
+		prevX, prevY := m.playerMapX, m.playerMapY
+
 		switch msg.String() {
 		case "ctrl+c", "q":
 			return m, tea.Quit
@@ -73,6 +76,34 @@ func (m model) updateGame(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			}
 		}
+
+		if prevX != m.playerMapX || prevY != m.playerMapY {
+			newRoom := currentMap[m.playerMapY][m.playerMapX]
+			newRoom.Visited = true
+
+			if newRoom.Type == Enemy {
+				m.state = stateCombat
+
+				playerEntity := &Player{stats: &m.stats}
+				numEnemies := 1 + rand.Intn(3)
+				enemies := make([]*Foe, numEnemies)
+				for i := range enemies {
+					enemies[i] = newGoblin()
+				}
+
+				turnOrder := calculateTurnOrder(playerEntity, enemies)
+
+				m.combat = &CombatState{
+					player:      playerEntity,
+					enemies:     enemies,
+					turnOrder:   turnOrder,
+					turnIndex:   0,
+					actionState: ActionSelect,
+				}
+
+				newRoom.Type = Empty
+			}
+		}
 	}
 	return m, nil
 }
@@ -117,12 +148,13 @@ func (m model) renderGameView() string {
 
 	statsArt := m.styles.StatsArt.Render(playerArt)
 	statsText := fmt.Sprintf(
-		"HP: %d\nMana: %d\nSpeed: %d\nMagic: %d\nStrength: %d",
+		"HP: %d\nMana: %d\nSpeed: %d\nMagic: %d\nStrength: %d \nDefense: %d",
 		m.stats.hp,
 		m.stats.mana,
 		m.stats.speed,
 		m.stats.magic,
 		m.stats.strength,
+		m.stats.defense,
 	)
 	statsContent := lipgloss.JoinHorizontal(lipgloss.Top, statsArt, statsText)
 	statsView := m.styles.Panel.Width(cameraWidth).Render(statsContent)
