@@ -25,7 +25,7 @@ func (m model) updateLoading(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	case tickMsg:
 		if m.progress.Percent() >= 1.0 {
-			m.state = stateMenu
+			m.state = StateMenu
 			return m, nil
 		}
 		progressCmd := m.progress.IncrPercent(0.02)

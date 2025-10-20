@@ -9,6 +9,8 @@ import (
 	"syscall"
 	"time"
 
+	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/ssh"
 	"github.com/charmbracelet/wish"
 	"github.com/charmbracelet/wish/bubbletea"
 	"github.com/charmbracelet/wish/logging"
@@ -21,12 +23,24 @@ const (
 	port = 2222
 )
 
+func programHandler(s ssh.Session) (tea.Model, []tea.ProgramOption) {
+	cmd := s.Command()
+
+	if len(cmd) > 0 && cmd[0] == "test-combat" {
+		log.Println("Starting test combat session...")
+		return game.CreateTeaProgram(s, game.StateCombat)
+	}
+
+	log.Println("Starting normal game session...")
+	return game.CreateTeaProgram(s, game.StateLoading)
+}
+
 func main() {
 	s, err := wish.NewServer(
 		wish.WithAddress(fmt.Sprintf("%s:%d", host, port)),
 		wish.WithHostKeyPath("ssh_host_key"),
 		wish.WithMiddleware(
-			bubbletea.Middleware(game.TeaHandler),
+			bubbletea.Middleware(programHandler),
 			logging.Middleware(),
 		),
 	)

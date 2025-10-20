@@ -1,6 +1,9 @@
 package game
 
-import "sort"
+import (
+	"math/rand"
+	"sort"
+)
 
 type combatActionState int
 
@@ -70,4 +73,32 @@ func calculateTurnOrder(player *Player, enemies []*Foe) []CombatEntity {
 	})
 
 	return entities
+}
+
+func newTestCombatState() *CombatState {
+	playerStats := &playerStats{
+		hp:       100,
+		mana:     50,
+		speed:    10,
+		magic:    12,
+		strength: 15,
+		defense:  8,
+	}
+	playerEntity := &Player{stats: playerStats}
+
+	numEnemies := 1 + rand.Intn(3)
+	enemies := make([]*Foe, numEnemies)
+	for i := range enemies {
+		enemies[i] = newGoblin()
+	}
+
+	turnOrder := calculateTurnOrder(playerEntity, enemies)
+
+	return &CombatState{
+		player:      playerEntity,
+		enemies:     enemies,
+		turnOrder:   turnOrder,
+		turnIndex:   0,
+		actionState: ActionSelect,
+	}
 }

@@ -82,7 +82,7 @@ func (m model) updateGame(msg tea.Msg) (tea.Model, tea.Cmd) {
 			newRoom.Visited = true
 
 			if newRoom.Type == Enemy {
-				m.state = stateCombat
+				m.state = StateCombat
 
 				playerEntity := &Player{stats: &m.stats}
 				numEnemies := 1 + rand.Intn(3)

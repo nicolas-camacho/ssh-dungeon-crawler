@@ -21,7 +21,7 @@ func (m model) updateMenu(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		case "enter":
 			if m.menuCursor == 0 {
-				m.state = stateGame
+				m.state = StateGame
 
 				firstFloor, startX, startY := generateMap(9, 9, 15, 0)
 				m.floors = []floor{*firstFloor}

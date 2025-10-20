@@ -20,7 +20,7 @@ func (m model) updateCombat(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.combat.player.TakeDamage(damage)
 
 		if m.combat.player.GetHP() <= 0 {
-			m.state = stateMenu
+			m.state = StateMenu
 			m.combat = nil
 			return m, nil
 		}
@@ -54,14 +54,22 @@ func (m model) renderCombatView() string {
 
 	enemiesWitdh := m.width - turnOrderWidth - playerStatsWidth - 6
 
+	turnOrderContentHeight := lipgloss.Height(turnOrderContent)
+
 	topSection := lipgloss.JoinHorizontal(
 		lipgloss.Top,
 		m.styles.Panel.Width(turnOrderWidth).Render(turnOrderContent),
-		m.styles.Panel.Width(enemiesWitdh).Align(lipgloss.Center).Render(enemiesContent),
-		m.styles.Panel.Width(playerStatsWidth).Render(playerStatsContent),
+		m.styles.Panel.Width(enemiesWitdh).Height(turnOrderContentHeight).
+			AlignVertical(lipgloss.Center).
+			AlignHorizontal(lipgloss.Center).
+			Render(enemiesContent),
+		m.styles.Panel.Width(playerStatsWidth).Height(turnOrderContentHeight).Render(playerStatsContent),
 	)
 
-	actionMenu := m.styles.Panel.Width(m.width - m.styles.Panel.GetHorizontalFrameSize()).Render(actionMenuContent)
+	actionMenu := m.styles.Panel.
+		Width(m.width - m.styles.Panel.GetHorizontalFrameSize()).
+		AlignHorizontal(lipgloss.Center).
+		Render(actionMenuContent)
 
 	return lipgloss.JoinVertical(
 		lipgloss.Left,
@@ -136,7 +144,7 @@ func (m model) handleTargetSelect(msg tea.KeyMsg) (model, tea.Cmd) {
 			m.combat.enemies = newEnemies
 
 			if len(m.combat.enemies) == 0 {
-				m.state = stateMenu
+				m.state = StateMenu
 				m.combat = nil
 				return m, nil
 			}
@@ -190,8 +198,11 @@ func (m model) renderEnemies() string {
 
 		view := lipgloss.JoinVertical(lipgloss.Center, hp, name)
 
+		enemyStyle := lipgloss.NewStyle().Margin(0, 2)
+		view = enemyStyle.Render(view)
+
 		if m.combat.actionState == TargetSelect && i == m.combat.targetCursor {
-			view = m.styles.Selected.Border(lipgloss.RoundedBorder(), true).Padding(0, 1).Render(view)
+			view = m.styles.Selected.Border(lipgloss.RoundedBorder(), true).Padding(0, 1).Align(lipgloss.Center).Render(view)
 		}
 
 		enemyViews = append(enemyViews, view)

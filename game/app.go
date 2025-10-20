@@ -6,7 +6,7 @@ import (
 	"github.com/charmbracelet/ssh"
 )
 
-func TeaHandler(s ssh.Session) (tea.Model, []tea.ProgramOption) {
+func CreateTeaProgram(s ssh.Session, startState GameState) (tea.Model, []tea.ProgramOption) {
 
 	prog := progress.New(
 		progress.WithGradient(string(orange), string(indigo)),
@@ -14,10 +14,15 @@ func TeaHandler(s ssh.Session) (tea.Model, []tea.ProgramOption) {
 	)
 
 	initialModel := model{
-		state:      stateLoading,
+		state:      startState,
 		menuCursor: 0,
 		progress:   prog,
 		styles:     newStyles(),
+	}
+
+	if startState == StateCombat {
+		initialModel.combat = newTestCombatState()
+		initialModel.stats = *initialModel.combat.player.stats
 	}
 
 	return initialModel, []tea.ProgramOption{tea.WithAltScreen()}
@@ -36,13 +41,13 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 
 	switch m.state {
-	case stateLoading:
+	case StateLoading:
 		return m.updateLoading(msg)
-	case stateMenu:
+	case StateMenu:
 		return m.updateMenu(msg)
-	case stateGame:
+	case StateGame:
 		return m.updateGame(msg)
-	case stateCombat:
+	case StateCombat:
 		return m.updateCombat(msg)
 	default:
 		return m, nil
@@ -55,13 +60,13 @@ func (m model) View() string {
 	}
 
 	switch m.state {
-	case stateLoading:
+	case StateLoading:
 		return m.renderLoadingView()
-	case stateMenu:
+	case StateMenu:
 		return m.renderMenuView()
-	case stateGame:
+	case StateGame:
 		return m.renderGameView()
-	case stateCombat:
+	case StateCombat:
 		return m.renderCombatView()
 	default:
 		return "Unknown state"

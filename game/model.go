@@ -4,13 +4,13 @@ import (
 	"github.com/charmbracelet/bubbles/progress"
 )
 
-type gameState int
+type GameState int
 
 const (
-	stateLoading gameState = iota
-	stateMenu
-	stateGame
-	stateCombat
+	StateLoading GameState = iota
+	StateMenu
+	StateGame
+	StateCombat
 )
 
 const playerArt = `👤YOU`
@@ -51,7 +51,7 @@ type CombatState struct {
 }
 
 type model struct {
-	state  gameState
+	state  GameState
 	width  int
 	height int
 	styles styles
