@@ -1,0 +1,7 @@
+{
+  "potion": {
+    "Name": "Poción",
+    "Effect": "heal",
+    "Value": 5
+  }
+}

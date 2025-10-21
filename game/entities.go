@@ -24,32 +24,64 @@ type CombatEntity interface {
 	GetSpeed() int
 	TakeDamage(amount int)
 	IsPlayer() bool
+	ModifyStat(stat string, value int)
 }
 
 type Player struct {
-	stats       *playerStats
+	data        *playerData
 	isDefending bool
 	Attacks     []Attack
 	Magics      []Magic
 }
 
 type Attack struct {
-	Name  string
-	Sides int
+	Name    string   `json:"name"`
+	Sides   int      `json:"sides"`
+	Effects []Effect `json:"effects"`
 }
 
 type Magic struct {
-	Name  string
-	Sides int
-	Cost  int
+	Name    string   `json:"name"`
+	Sides   int      `json:"sides"`
+	Cost    int      `json:"cost"`
+	Effects []Effect `json:"effects"`
+}
+
+type Item struct {
+	Name   string
+	Effect string
+	Value  int
+}
+
+type Effect struct {
+	Target string `json:"target"`
+	Stat   string `json:"stat"`
+	Sides  int    `json:"sides"`
 }
 
 func (p *Player) GetName() string       { return "@YOU" }
-func (p *Player) GetHP() int            { return p.stats.hp }
+func (p *Player) GetHP() int            { return p.data.stats.hp }
 func (p *Player) GetMaxHP() int         { return 100 }
-func (p *Player) GetSpeed() int         { return p.stats.speed }
-func (p *Player) TakeDamage(amount int) { p.stats.hp -= amount }
+func (p *Player) GetSpeed() int         { return p.data.stats.speed }
+func (p *Player) TakeDamage(amount int) { p.data.stats.hp -= amount }
 func (p *Player) IsPlayer() bool        { return true }
+func (p *Player) ModifyStat(stat string, value int) {
+	switch stat {
+	case "HP":
+		p.data.stats.hp += value
+		if p.data.stats.hp > p.GetMaxHP() {
+			p.data.stats.hp = p.GetMaxHP()
+		}
+	case "Strength":
+		p.data.stats.strength += value
+	case "Defense":
+		p.data.stats.defense += value
+	case "Speed":
+		p.data.stats.speed += value
+	case "Magic":
+		p.data.stats.magic += value
+	}
+}
 
 type Foe struct {
 	Name    string
@@ -66,16 +98,24 @@ func (e *Foe) GetMaxHP() int         { return e.MaxHP }
 func (e *Foe) GetSpeed() int         { return e.Speed }
 func (e *Foe) TakeDamage(amount int) { e.HP -= amount }
 func (e *Foe) IsPlayer() bool        { return false }
+func (e *Foe) ModifyStat(stat string, value int) {
+	switch stat {
+	case "HP":
+		e.HP += value
+	case "Strength":
+	case "Defense":
+		e.Defense += value
+		if e.Defense < 0 {
+			e.Defense = 0
+		}
+	case "Speed":
+		e.Speed += value
+	}
+}
 
 func newGoblin() *Foe {
-	return &Foe{
-		Name:    "Goblin",
-		HP:      20,
-		MaxHP:   20,
-		Speed:   8,
-		Attack:  5,
-		Defense: 2,
-	}
+	goblin := EnemyTemplates["goblin"]
+	return &goblin
 }
 
 func calculateTurnOrder(player *Player, enemies []*Foe) []CombatEntity {
@@ -93,24 +133,34 @@ func calculateTurnOrder(player *Player, enemies []*Foe) []CombatEntity {
 }
 
 func newTestCombatState() *CombatState {
-	playerStats := &playerStats{
-		hp:       100,
-		mana:     50,
-		speed:    10,
-		magic:    12,
-		strength: 8,
-		defense:  8,
+	playerData := &playerData{
+		stats: playerStats{
+			hp:       100,
+			mana:     50,
+			speed:    10,
+			magic:    12,
+			strength: 8,
+			defense:  8,
+		},
+		inventory: map[string]int{
+			"potion": 1,
+		},
 	}
+
+	var playerAttacks []Attack
+	for _, attack := range AttackTemplates {
+		playerAttacks = append(playerAttacks, attack)
+	}
+
+	var playerMagics []Magic
+	for _, magic := range MagicTemplates {
+		playerMagics = append(playerMagics, magic)
+	}
+
 	playerEntity := &Player{
-		stats: playerStats,
-		Attacks: []Attack{
-			{Name: "Slash", Sides: 4},
-			{Name: "Final Slash", Sides: 6},
-		},
-		Magics: []Magic{
-			{Name: "Fireball", Sides: 5, Cost: 10},
-			{Name: "Firestorm", Sides: 8, Cost: 25},
-		},
+		data:    playerData,
+		Attacks: playerAttacks,
+		Magics:  playerMagics,
 	}
 
 	numEnemies := 1 + rand.Intn(3)

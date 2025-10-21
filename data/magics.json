@@ -1,0 +1,20 @@
+{
+  "fireball": {
+    "name": "Fireball",
+    "sides": 5,
+    "cost": 10,
+    "effects": []
+  },
+  "firestorm": {
+    "name": "Firestorm",
+    "sides": 8,
+    "cost": 25,
+    "effects": [
+      {
+        "target": "Target",
+        "stat": "Defense",
+        "sides": 2
+      }
+    ]
+  }
+}

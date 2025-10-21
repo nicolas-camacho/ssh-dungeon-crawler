@@ -29,13 +29,16 @@ func (m model) updateMenu(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 				m.playerMapX = startX
 				m.playerMapY = startY
-				m.stats = playerStats{
-					hp:       100,
-					mana:     50,
-					speed:    10,
-					magic:    12,
-					strength: 8,
-					defense:  5,
+				m.player = playerData{
+					stats: playerStats{
+						hp:       100,
+						mana:     50,
+						speed:    10,
+						magic:    12,
+						strength: 8,
+						defense:  8,
+					},
+					inventory: make(map[string]int),
 				}
 
 				m.floors[m.currentFloor].worldMap[startY][startX].Visited = true

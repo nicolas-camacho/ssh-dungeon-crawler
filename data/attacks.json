@@ -1,0 +1,29 @@
+{
+  "slash": {
+    "name": "Slash",
+    "sides": 4,
+    "effects": []
+  },
+  "final_slash": {
+    "name": "Final Slash",
+    "sides": 6,
+    "effects": [
+      {
+        "target": "Self",
+        "stat": "HP",
+        "sides": -4
+      }
+    ]
+  },
+  "war_cry": {
+    "name": "War Cry",
+    "sides": 0,
+    "effects": [
+      {
+        "target": "Self",
+        "stat": "Strength",
+        "sides": 3
+      }
+    ]
+  }
+}

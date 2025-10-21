@@ -19,6 +19,11 @@ type playerStats struct {
 	hp, mana, speed, magic, strength, defense int
 }
 
+type playerData struct {
+	stats     playerStats
+	inventory map[string]int
+}
+
 type roomType int
 
 const (
@@ -66,7 +71,7 @@ type model struct {
 	currentFloor int
 	playerMapX   int
 	playerMapY   int
-	stats        playerStats
+	player       playerData
 
 	combat *CombatState
 }

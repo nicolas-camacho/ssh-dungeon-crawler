@@ -85,16 +85,24 @@ func (m model) updateGame(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if newRoom.Type == Enemy {
 				m.state = StateCombat
 
+				var playerAttacks []Attack
+				for _, attacks := range AttackTemplates {
+					playerAttacks = append(playerAttacks, attacks)
+				}
+				var playerMagics []Magic
+				for _, magics := range MagicTemplates {
+					playerMagics = append(playerMagics, magics)
+				}
+
+				if m.player.inventory == nil {
+					m.player.inventory = make(map[string]int)
+				}
+				m.player.inventory["potion"] = 1
+
 				playerEntity := &Player{
-					stats: &m.stats,
-					Attacks: []Attack{
-						{Name: "Slash", Sides: 4},
-						{Name: "Final Slash", Sides: 6},
-					},
-					Magics: []Magic{
-						{Name: "Fireball", Cost: 10, Sides: 5},
-						{Name: "Firestorm", Cost: 25, Sides: 8},
-					},
+					data:    &m.player,
+					Attacks: playerAttacks,
+					Magics:  playerMagics,
 				}
 				numEnemies := 1 + rand.Intn(3)
 				enemies := make([]*Foe, numEnemies)
@@ -167,12 +175,12 @@ func (m model) renderGameView() string {
 	statsArt := m.styles.StatsArt.Render(playerArt)
 	statsText := fmt.Sprintf(
 		"HP: %d\nMana: %d\nSpeed: %d\nMagic: %d\nStrength: %d \nDefense: %d",
-		m.stats.hp,
-		m.stats.mana,
-		m.stats.speed,
-		m.stats.magic,
-		m.stats.strength,
-		m.stats.defense,
+		m.player.stats.hp,
+		m.player.stats.mana,
+		m.player.stats.speed,
+		m.player.stats.magic,
+		m.player.stats.strength,
+		m.player.stats.defense,
 	)
 	statsContent := lipgloss.JoinHorizontal(lipgloss.Top, statsArt, statsText)
 	statsView := m.styles.Panel.Width(cameraWidth).Render(statsContent)

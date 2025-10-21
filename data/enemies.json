@@ -1,0 +1,18 @@
+{
+  "goblin": {
+    "Name": "Goblin",
+    "HP": 20,
+    "MaxHP": 20,
+    "Speed": 8,
+    "Attack": 5,
+    "Defense": 2
+  },
+  "orc": {
+    "Name": "Orco Fuerte",
+    "HP": 45,
+    "MaxHP": 45,
+    "Speed": 5,
+    "Attack": 12,
+    "Defense": 5
+  }
+}

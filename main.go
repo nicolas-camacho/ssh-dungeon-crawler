@@ -36,6 +36,10 @@ func programHandler(s ssh.Session) (tea.Model, []tea.ProgramOption) {
 }
 
 func main() {
+	if err := game.LoadGameData(); err != nil {
+		log.Fatalf("Failed to load game data: %v", err)
+	}
+
 	s, err := wish.NewServer(
 		wish.WithAddress(fmt.Sprintf("%s:%d", host, port)),
 		wish.WithHostKeyPath("ssh_host_key"),

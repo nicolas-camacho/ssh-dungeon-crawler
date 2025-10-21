@@ -34,7 +34,6 @@ func (m model) updateCombat(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.combat.enemyActionProgress.SetPercent(0)
 
 			if m.combat.player.GetHP() <= 0 {
-				m.stats = *m.combat.player.stats
 				m.state = StateMenu
 				m.combat = nil
 				return m, nil
@@ -80,16 +79,16 @@ func (m model) renderCombatView() string {
 
 	enemiesWitdh := m.width - turnOrderWidth - playerStatsWidth - 6
 
-	turnOrderContentHeight := lipgloss.Height(turnOrderContent)
+	playerStatsContentHeight := lipgloss.Height(playerStatsContent)
 
 	topSection := lipgloss.JoinHorizontal(
 		lipgloss.Top,
-		m.styles.Panel.Width(turnOrderWidth).Render(turnOrderContent),
-		m.styles.Panel.Width(enemiesWitdh).Height(turnOrderContentHeight).
+		m.styles.Panel.Width(turnOrderWidth).Height(playerStatsContentHeight).Render(turnOrderContent),
+		m.styles.Panel.Width(enemiesWitdh).Height(playerStatsContentHeight).
 			AlignVertical(lipgloss.Center).
 			AlignHorizontal(lipgloss.Center).
 			Render(enemiesContent),
-		m.styles.Panel.Width(playerStatsWidth).Height(turnOrderContentHeight).Render(playerStatsContent),
+		m.styles.Panel.Width(playerStatsWidth).Render(playerStatsContent),
 	)
 
 	var middleSection string
@@ -182,13 +181,62 @@ func (m model) handleSubActionSelect(msg tea.KeyMsg) (model, tea.Cmd) {
 		m.combat.subActionCursor = 0
 		return m, nil
 	case "enter":
-		if m.combat.actionState == ItemSelect {
-			m.stats.hp += 5
-			if m.stats.hp > 100 {
-				m.stats.hp = 100
-			}
-			m = m.advanceTurn()
+		if m.combat.actionState == AttackSelect {
+			selectedAttack := m.combat.player.Attacks[m.combat.subActionCursor]
 
+			if selectedAttack.Sides == 0 {
+				m.applyEffects(m.combat.player, nil, selectedAttack.Effects)
+				m = m.advanceTurn()
+				if len(m.combat.turnOrder) > 0 && !m.combat.turnOrder[m.combat.turnIndex].IsPlayer() {
+					return m.startEnemyTurn()
+				}
+				return m, nil
+			}
+		}
+
+		if m.combat.actionState == MagicSelect {
+			selectedMagic := m.combat.player.Magics[m.combat.subActionCursor]
+
+			if selectedMagic.Sides == 0 {
+				if m.combat.player.data.stats.mana < selectedMagic.Cost {
+					return m, nil
+				}
+				m.combat.player.data.stats.mana -= selectedMagic.Cost
+				m.applyEffects(m.combat.player, nil, selectedMagic.Effects)
+				m = m.advanceTurn()
+				if len(m.combat.turnOrder) > 0 && !m.combat.turnOrder[m.combat.turnIndex].IsPlayer() {
+					return m.startEnemyTurn()
+				}
+				return m, nil
+			}
+		}
+
+		if m.combat.actionState == ItemSelect {
+			var itemIDs []string
+			for id := range m.combat.player.data.inventory {
+				itemIDs = append(itemIDs, id)
+			}
+
+			if len(itemIDs) == 0 {
+				return m, nil
+			}
+
+			selectedItemID := itemIDs[m.combat.subActionCursor]
+			item := ItemTemplates[selectedItemID]
+
+			if item.Effect == "heal" {
+				m.combat.player.data.stats.hp += item.Value
+				if m.combat.player.data.stats.hp > m.combat.player.GetMaxHP() {
+					m.combat.player.data.stats.hp = m.combat.player.GetMaxHP()
+				}
+			}
+
+			m.combat.player.data.inventory[selectedItemID]--
+			if m.combat.player.data.inventory[selectedItemID] <= 0 {
+				delete(m.combat.player.data.inventory, selectedItemID)
+			}
+
+			m = m.advanceTurn()
 			if !m.combat.turnOrder[m.combat.turnIndex].IsPlayer() {
 				return m.startEnemyTurn()
 			}
@@ -238,30 +286,35 @@ func (m model) handleTargetSelect(msg tea.KeyMsg) (model, tea.Cmd) {
 	case "enter":
 		target := aliveEnemies[m.combat.targetCursor]
 
-		if m.combat.actionCursor == 0 {
+		switch m.combat.actionCursor {
+		case 0:
 			selectedAttack := m.combat.player.Attacks[m.combat.subActionCursor]
 			roll := rand.Intn(selectedAttack.Sides) + 1
 
-			damage := roll + m.combat.player.stats.strength - (target.Defense / 2)
+			damage := roll + m.combat.player.data.stats.strength - (target.Defense / 2)
 			if damage < 1 {
 				damage = 1
 			}
 			target.TakeDamage(damage)
-		} else if m.combat.actionCursor == 1 {
+
+			m.applyEffects(m.combat.player, target, selectedAttack.Effects)
+		case 1:
 			selectedMagic := m.combat.player.Magics[m.combat.subActionCursor]
 
-			if m.combat.player.stats.mana < selectedMagic.Cost {
+			if m.combat.player.data.stats.mana < selectedMagic.Cost {
 				return m, nil
 			}
 
-			m.combat.player.stats.mana -= selectedMagic.Cost
+			m.combat.player.data.stats.mana -= selectedMagic.Cost
 
 			roll := rand.Intn(selectedMagic.Sides) + 1
-			damage := roll + m.combat.player.stats.magic - (target.Defense / 2)
+			damage := roll + m.combat.player.data.stats.magic - (target.Defense / 2)
 			if damage < 1 {
 				damage = 1
 			}
 			target.TakeDamage(damage)
+
+			m.applyEffects(m.combat.player, target, selectedMagic.Effects)
 		}
 
 		if target.GetHP() <= 0 {
@@ -273,7 +326,6 @@ func (m model) handleTargetSelect(msg tea.KeyMsg) (model, tea.Cmd) {
 				}
 			}
 			if !hasAliveEnemies {
-				m.stats = *m.combat.player.stats
 				m.state = StateGame
 				m.combat = nil
 				return m, nil
@@ -308,8 +360,20 @@ func (m model) renderTurnOrder() string {
 
 func (m model) renderPlayerStatsCombat() string {
 	s := m.styles.Title.Render(m.combat.player.GetName())
-	s += fmt.Sprintf("\n\nHP: %d/%d", m.combat.player.GetHP(), m.combat.player.GetMaxHP())
-	s += fmt.Sprintf("\nMana: %d", m.combat.player.stats.mana)
+
+	statsText := fmt.Sprintf(
+		"\n\nHP: %d/%d\nMP: %d\n\nSTR: %d\nMAG: %d\nSPD: %d\nDEF: %d",
+		m.combat.player.GetHP(),
+		m.combat.player.GetMaxHP(),
+		m.combat.player.data.stats.mana,
+		m.combat.player.data.stats.strength,
+		m.combat.player.data.stats.magic,
+		m.combat.player.data.stats.speed,
+		m.combat.player.data.stats.defense,
+	)
+
+	s += statsText
+
 	if m.combat.player.isDefending {
 		s += "\n\n" + m.styles.Selected.Render("Defending!")
 	}
@@ -383,14 +447,32 @@ func (m model) renderActionMenu() string {
 				style = m.styles.Selected
 			}
 
-			if magic.Cost > m.combat.player.stats.mana {
+			if magic.Cost > m.combat.player.data.stats.mana {
 				style = m.styles.Faint
 			}
 			magicOptions = append(magicOptions, style.Render(optionText))
 		}
 		content = "Magics: " + strings.Join(magicOptions, " | ")
 	case ItemSelect:
-		content = "Items: " + m.styles.Selected.Render("> Health Potion(+5 HP)")
+		var itemOptions []string
+		var itemIDs []string
+		for id := range m.combat.player.data.inventory {
+			itemIDs = append(itemIDs, id)
+		}
+		if len(itemIDs) == 0 {
+			content = "Items: (Empty)"
+		} else {
+			for i, id := range itemIDs {
+				item := ItemTemplates[id]
+				count := m.combat.player.data.inventory[id]
+				optionText := fmt.Sprintf("%s (x%d)", item.Name, count)
+				if i == m.combat.subActionCursor {
+					optionText = m.styles.Selected.Render(optionText)
+				}
+				itemOptions = append(itemOptions, optionText)
+			}
+			content = "Items: " + strings.Join(itemOptions, " | ")
+		}
 	case TargetSelect:
 		content = "Select Target..."
 	}
@@ -419,4 +501,24 @@ func (m model) startEnemyTurn() (model, tea.Cmd) {
 	m.combat.isEnemyTurnInProgress = true
 	m.combat.enemyActionProgress.Width = m.width - m.styles.Panel.GetHorizontalFrameSize()
 	return m, enemyTickCmd()
+}
+
+func (m *model) applyEffects(source *Player, target *Foe, effect []Effect) {
+	for _, effect := range effect {
+		var value int
+		if effect.Sides > 0 {
+			value = rand.Intn(effect.Sides) + 1
+		} else if effect.Sides < 0 {
+			value = -(rand.Intn(-effect.Sides) + 1)
+		}
+
+		var affectedEntity CombatEntity
+		if effect.Target == "Self" {
+			affectedEntity = source
+		} else {
+			affectedEntity = target
+		}
+
+		affectedEntity.ModifyStat(effect.Stat, value)
+	}
 }

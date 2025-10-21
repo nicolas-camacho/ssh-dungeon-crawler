@@ -22,7 +22,7 @@ func CreateTeaProgram(s ssh.Session, startState GameState) (tea.Model, []tea.Pro
 
 	if startState == StateCombat {
 		initialModel.combat = newTestCombatState()
-		initialModel.stats = *initialModel.combat.player.stats
+		initialModel.player = *initialModel.combat.player.data
 	}
 
 	return initialModel, []tea.ProgramOption{tea.WithAltScreen()}
