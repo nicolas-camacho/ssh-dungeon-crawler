@@ -14,8 +14,6 @@ FROM alpine:latest
 WORKDIR /app
 
 COPY --from=builder /app/server .
-COPY ./ssh_host_key ./ssh_host_key
-
 COPY ./data ./data
 
-CMD [ "./server" ]
+CMD sh -c "ssh-keygen -t rsa -b 4096 -f /app/data/ssh_host_rsa_key -N '' && ./server"
