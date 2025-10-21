@@ -1,9 +1,0 @@
-# render.yaml
-services:
-  - type: pserv
-    name: ssh-dungeon-crawler
-    runtime: docker
-
-    envVars:
-      - key: HOST
-        value: 0.0.0.0

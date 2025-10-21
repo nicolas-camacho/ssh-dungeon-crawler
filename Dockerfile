@@ -18,7 +18,4 @@ COPY ./ssh_host_key ./ssh_host_key
 
 COPY ./data ./data
 
-
-EXPOSE 2222
-
 CMD [ "./server" ]
