@@ -11,6 +11,8 @@ RUN CGO_ENABLED=0 go build -o /app/server .
 
 FROM alpine:latest
 
+RUN apk add --no-cache openssh
+
 WORKDIR /app
 
 COPY --from=builder /app/server .
