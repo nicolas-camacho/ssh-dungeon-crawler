@@ -1,0 +1,14 @@
+# render.yaml
+services:
+  - type: pserv
+    name: ssh-dungeon-crawler
+    env: docker
+    dockerfilePath: ./Dockerfile
+
+    envVars:
+      - key: HOST
+        value: 0.0.0.0
+
+    ports:
+      - port: 2222
+        protocol: tcp
