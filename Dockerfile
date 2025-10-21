@@ -18,4 +18,6 @@ WORKDIR /app
 COPY --from=builder /app/server .
 COPY ./data ./data
 
+EXPOSE 2222
+
 CMD sh -c "ssh-keygen -t rsa -b 4096 -f /app/data/ssh_host_rsa_key -N '' && ./server"
