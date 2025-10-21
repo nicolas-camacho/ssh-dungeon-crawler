@@ -27,7 +27,7 @@ func newStyles() styles {
 		Title:       lipgloss.NewStyle().Foreground(orange).Bold(true),
 		Selected:    lipgloss.NewStyle().Foreground(indigo).Bold(true),
 		Faint:       lipgloss.NewStyle().Faint(true),
-		Help:        lipgloss.NewStyle().Foreground(darkPurple),
+		Help:        lipgloss.NewStyle().Foreground(orange),
 		Panel:       lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(indigo),
 		MapBorder:   lipgloss.NewStyle().Border(lipgloss.DoubleBorder()).BorderForeground(indigo),
 		Player:      lipgloss.NewStyle().Width(3).Align(lipgloss.Center).Foreground(orange).SetString("[@]"),

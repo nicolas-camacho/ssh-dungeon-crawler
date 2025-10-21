@@ -85,7 +85,17 @@ func (m model) updateGame(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if newRoom.Type == Enemy {
 				m.state = StateCombat
 
-				playerEntity := &Player{stats: &m.stats}
+				playerEntity := &Player{
+					stats: &m.stats,
+					Attacks: []Attack{
+						{Name: "Slash", Sides: 4},
+						{Name: "Final Slash", Sides: 6},
+					},
+					Magics: []Magic{
+						{Name: "Fireball", Cost: 10, Sides: 5},
+						{Name: "Firestorm", Cost: 25, Sides: 8},
+					},
+				}
 				numEnemies := 1 + rand.Intn(3)
 				enemies := make([]*Foe, numEnemies)
 				for i := range enemies {

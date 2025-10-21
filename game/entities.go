@@ -29,6 +29,19 @@ type CombatEntity interface {
 type Player struct {
 	stats       *playerStats
 	isDefending bool
+	Attacks     []Attack
+	Magics      []Magic
+}
+
+type Attack struct {
+	Name  string
+	Sides int
+}
+
+type Magic struct {
+	Name  string
+	Sides int
+	Cost  int
 }
 
 func (p *Player) GetName() string       { return "@YOU" }
@@ -39,11 +52,12 @@ func (p *Player) TakeDamage(amount int) { p.stats.hp -= amount }
 func (p *Player) IsPlayer() bool        { return true }
 
 type Foe struct {
-	Name   string
-	HP     int
-	MaxHP  int
-	Speed  int
-	Attack int
+	Name    string
+	HP      int
+	MaxHP   int
+	Speed   int
+	Attack  int
+	Defense int
 }
 
 func (e *Foe) GetName() string       { return e.Name }
@@ -55,11 +69,12 @@ func (e *Foe) IsPlayer() bool        { return false }
 
 func newGoblin() *Foe {
 	return &Foe{
-		Name:   "Goblin",
-		HP:     10,
-		MaxHP:  10,
-		Speed:  3,
-		Attack: 5,
+		Name:    "Goblin",
+		HP:      20,
+		MaxHP:   20,
+		Speed:   8,
+		Attack:  5,
+		Defense: 2,
 	}
 }
 
@@ -83,10 +98,20 @@ func newTestCombatState() *CombatState {
 		mana:     50,
 		speed:    10,
 		magic:    12,
-		strength: 15,
+		strength: 8,
 		defense:  8,
 	}
-	playerEntity := &Player{stats: playerStats}
+	playerEntity := &Player{
+		stats: playerStats,
+		Attacks: []Attack{
+			{Name: "Slash", Sides: 4},
+			{Name: "Final Slash", Sides: 6},
+		},
+		Magics: []Magic{
+			{Name: "Fireball", Sides: 5, Cost: 10},
+			{Name: "Firestorm", Sides: 8, Cost: 25},
+		},
+	}
 
 	numEnemies := 1 + rand.Intn(3)
 	enemies := make([]*Foe, numEnemies)

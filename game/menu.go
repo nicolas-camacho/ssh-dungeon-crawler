@@ -32,9 +32,9 @@ func (m model) updateMenu(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.stats = playerStats{
 					hp:       100,
 					mana:     50,
-					speed:    5,
-					magic:    5,
-					strength: 5,
+					speed:    10,
+					magic:    12,
+					strength: 8,
 					defense:  5,
 				}
 

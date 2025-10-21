@@ -2,6 +2,7 @@ package game
 
 import (
 	"fmt"
+	"math/rand"
 	"strings"
 	"time"
 
@@ -33,6 +34,7 @@ func (m model) updateCombat(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.combat.enemyActionProgress.SetPercent(0)
 
 			if m.combat.player.GetHP() <= 0 {
+				m.stats = *m.combat.player.stats
 				m.state = StateMenu
 				m.combat = nil
 				return m, nil
@@ -90,25 +92,42 @@ func (m model) renderCombatView() string {
 		m.styles.Panel.Width(playerStatsWidth).Height(turnOrderContentHeight).Render(playerStatsContent),
 	)
 
-	var bottomSection string
+	var middleSection string
 	if m.combat.isEnemyTurnInProgress {
 		enemyName := m.combat.turnOrder[m.combat.turnIndex].GetName()
 		actionText := fmt.Sprintf("%s is attacking!", enemyName)
 		progressBar := m.combat.enemyActionProgress.View()
-		bottomSection = lipgloss.JoinVertical(lipgloss.Center, actionText, progressBar)
+		middleSection = lipgloss.JoinVertical(lipgloss.Center, actionText, progressBar)
 	} else {
-		bottomSection = m.renderActionMenu()
+		middleSection = m.renderActionMenu()
 	}
 
 	actionMenu := m.styles.Panel.
 		Width(m.width - m.styles.Panel.GetHorizontalFrameSize()).
 		AlignHorizontal(lipgloss.Center).
-		Render(bottomSection)
+		Render(middleSection)
+
+	var helpText string
+	switch m.combat.actionState {
+	case ActionSelect:
+		helpText = "Use ← → to select an action. Press Enter to confirm."
+	case AttackSelect, MagicSelect, ItemSelect:
+		helpText = "Use ← → to select an option. Press Enter to confirm. Esc to go back."
+	case TargetSelect:
+		helpText = "Use ← → to select a target. Press Enter to confirm. Esc to go back."
+	}
+
+	if m.combat.isEnemyTurnInProgress {
+		helpText = "Enemy is taking action..."
+	}
+
+	helpView := m.styles.Help.Padding(0, 1).Render(helpText)
 
 	return lipgloss.JoinVertical(
 		lipgloss.Left,
 		topSection,
 		actionMenu,
+		helpView,
 	)
 }
 
@@ -147,7 +166,22 @@ func (m model) handleActionSelect(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 }
 
 func (m model) handleSubActionSelect(msg tea.KeyMsg) (model, tea.Cmd) {
-	if msg.String() == "enter" {
+	switch msg.String() {
+	case "left", "a":
+		if m.combat.subActionCursor > 0 {
+			m.combat.subActionCursor--
+		}
+	case "right", "d":
+		if m.combat.actionState == AttackSelect && m.combat.subActionCursor < len(m.combat.player.Attacks)-1 {
+			m.combat.subActionCursor++
+		} else if m.combat.actionState == MagicSelect && m.combat.subActionCursor < len(m.combat.player.Magics)-1 {
+			m.combat.subActionCursor++
+		}
+	case "esc":
+		m.combat.actionState = ActionSelect
+		m.combat.subActionCursor = 0
+		return m, nil
+	case "enter":
 		if m.combat.actionState == ItemSelect {
 			m.stats.hp += 5
 			if m.stats.hp > 100 {
@@ -190,14 +224,44 @@ func (m model) handleTargetSelect(msg tea.KeyMsg) (model, tea.Cmd) {
 		if m.combat.targetCursor < len(aliveEnemies)-1 {
 			m.combat.targetCursor++
 		}
+	case "esc":
+		switch m.combat.actionCursor {
+		case 0:
+			m.combat.actionState = AttackSelect
+		case 1:
+			m.combat.actionState = MagicSelect
+		case 3:
+			m.combat.actionState = ItemSelect
+		}
+		m.combat.targetCursor = 0
+		return m, nil
 	case "enter":
 		target := aliveEnemies[m.combat.targetCursor]
 
 		if m.combat.actionCursor == 0 {
-			target.TakeDamage(10)
-		}
-		if m.combat.actionCursor == 1 {
-			target.TakeDamage(15)
+			selectedAttack := m.combat.player.Attacks[m.combat.subActionCursor]
+			roll := rand.Intn(selectedAttack.Sides) + 1
+
+			damage := roll + m.combat.player.stats.strength - (target.Defense / 2)
+			if damage < 1 {
+				damage = 1
+			}
+			target.TakeDamage(damage)
+		} else if m.combat.actionCursor == 1 {
+			selectedMagic := m.combat.player.Magics[m.combat.subActionCursor]
+
+			if m.combat.player.stats.mana < selectedMagic.Cost {
+				return m, nil
+			}
+
+			m.combat.player.stats.mana -= selectedMagic.Cost
+
+			roll := rand.Intn(selectedMagic.Sides) + 1
+			damage := roll + m.combat.player.stats.magic - (target.Defense / 2)
+			if damage < 1 {
+				damage = 1
+			}
+			target.TakeDamage(damage)
 		}
 
 		if target.GetHP() <= 0 {
@@ -209,6 +273,7 @@ func (m model) handleTargetSelect(msg tea.KeyMsg) (model, tea.Cmd) {
 				}
 			}
 			if !hasAliveEnemies {
+				m.stats = *m.combat.player.stats
 				m.state = StateGame
 				m.combat = nil
 				return m, nil
@@ -244,7 +309,7 @@ func (m model) renderTurnOrder() string {
 func (m model) renderPlayerStatsCombat() string {
 	s := m.styles.Title.Render(m.combat.player.GetName())
 	s += fmt.Sprintf("\n\nHP: %d/%d", m.combat.player.GetHP(), m.combat.player.GetMaxHP())
-	s += fmt.Sprintf("\nMana: %d", m.stats.mana)
+	s += fmt.Sprintf("\nMana: %d", m.combat.player.stats.mana)
 	if m.combat.player.isDefending {
 		s += "\n\n" + m.styles.Selected.Render("Defending!")
 	}
@@ -261,13 +326,18 @@ func (m model) renderEnemies() string {
 		}
 	}
 
+	currentTurnEntity := m.combat.turnOrder[m.combat.turnIndex]
+
 	for i, enemy := range aliveEnemies {
 		hp := fmt.Sprintf("HP: %d/%d", enemy.GetHP(), enemy.GetMaxHP())
 		name := enemy.GetName()
 
 		view := lipgloss.JoinVertical(lipgloss.Center, hp, name)
-
 		enemyStyle := lipgloss.NewStyle().Margin(0, 2)
+
+		if enemy == currentTurnEntity {
+			enemyStyle = enemyStyle.Foreground(lipgloss.Color("#F25912")).Bold(true)
+		}
 		view = enemyStyle.Render(view)
 
 		if m.combat.actionState == TargetSelect && i == m.combat.targetCursor {
@@ -294,9 +364,31 @@ func (m model) renderActionMenu() string {
 		}
 		content = lipgloss.JoinHorizontal(lipgloss.Top, styledOptions...)
 	case AttackSelect:
-		content = "Attacks: " + m.styles.Selected.Render("> Basic Attack")
+		var attackOptions []string
+		for i, attack := range m.combat.player.Attacks {
+			name := attack.Name
+			if i == m.combat.subActionCursor {
+				name = m.styles.Selected.Render(name)
+			}
+			attackOptions = append(attackOptions, name)
+		}
+		content = "Attacks: " + strings.Join(attackOptions, " | ")
 	case MagicSelect:
-		content = "Spells: " + m.styles.Selected.Render("> Fireball")
+		var magicOptions []string
+		for i, magic := range m.combat.player.Magics {
+			optionText := fmt.Sprintf("%s (%d)", magic.Name, magic.Cost)
+
+			style := lipgloss.NewStyle()
+			if i == m.combat.subActionCursor {
+				style = m.styles.Selected
+			}
+
+			if magic.Cost > m.combat.player.stats.mana {
+				style = m.styles.Faint
+			}
+			magicOptions = append(magicOptions, style.Render(optionText))
+		}
+		content = "Magics: " + strings.Join(magicOptions, " | ")
 	case ItemSelect:
 		content = "Items: " + m.styles.Selected.Render("> Health Potion(+5 HP)")
 	case TargetSelect:
