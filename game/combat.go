@@ -5,39 +5,64 @@ import (
 	"strings"
 	"time"
 
+	"github.com/charmbracelet/bubbles/progress"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 )
 
+type enemyTickMsg time.Time
+
+func enemyTickCmd() tea.Cmd {
+	return tea.Tick(time.Millisecond*50, func(t time.Time) tea.Msg {
+		return enemyTickMsg(t)
+	})
+}
+
 func (m model) updateCombat(msg tea.Msg) (tea.Model, tea.Cmd) {
-	if !m.combat.turnOrder[m.combat.turnIndex].IsPlayer() {
-		enemy := m.combat.turnOrder[m.combat.turnIndex].(*Foe)
+	switch msg := msg.(type) {
+	case enemyTickMsg:
+		if m.combat.enemyActionProgress.Percent() >= 1.0 {
+			enemy := m.combat.turnOrder[m.combat.turnIndex].(*Foe)
+			damage := enemy.Attack
+			if m.combat.player.isDefending {
+				damage /= 2
+			}
+			m.combat.player.TakeDamage(damage)
 
-		damage := enemy.Attack
-		if m.combat.player.isDefending {
-			damage /= 2
-		}
-		m.combat.player.TakeDamage(damage)
+			m.combat.isEnemyTurnInProgress = false
+			m.combat.enemyActionProgress.SetPercent(0)
 
-		if m.combat.player.GetHP() <= 0 {
-			m.state = StateMenu
-			m.combat = nil
+			if m.combat.player.GetHP() <= 0 {
+				m.state = StateMenu
+				m.combat = nil
+				return m, nil
+			}
+
+			m = m.advanceTurn()
+			if !m.combat.turnOrder[m.combat.turnIndex].IsPlayer() {
+				return m.startEnemyTurn()
+			}
 			return m, nil
 		}
 
-		m = m.advanceTurn()
-		return m, tea.Tick(time.Millisecond*500, func(t time.Time) tea.Msg { return nil })
-	}
+		cmd := m.combat.enemyActionProgress.IncrPercent(0.025)
+		return m, tea.Batch(enemyTickCmd(), cmd)
 
-	switch msg := msg.(type) {
+	case progress.FrameMsg:
+		progressModel, cmd := m.combat.enemyActionProgress.Update(msg)
+		m.combat.enemyActionProgress = progressModel.(progress.Model)
+		return m, cmd
+
 	case tea.KeyMsg:
-		switch m.combat.actionState {
-		case ActionSelect:
-			return m.handleActionSelect(msg)
-		case AttackSelect, MagicSelect, ItemSelect:
-			return m.handleSubActionSelect(msg)
-		case TargetSelect:
-			return m.handleTargetSelect(msg)
+		if m.combat.turnOrder[m.combat.turnIndex].IsPlayer() {
+			switch m.combat.actionState {
+			case ActionSelect:
+				return m.handleActionSelect(msg)
+			case AttackSelect, MagicSelect, ItemSelect:
+				return m.handleSubActionSelect(msg)
+			case TargetSelect:
+				return m.handleTargetSelect(msg)
+			}
 		}
 	}
 	return m, nil
@@ -47,7 +72,6 @@ func (m model) renderCombatView() string {
 	turnOrderContent := m.renderTurnOrder()
 	playerStatsContent := m.renderPlayerStatsCombat()
 	enemiesContent := m.renderEnemies()
-	actionMenuContent := m.renderActionMenu()
 
 	turnOrderWidth := 20
 	playerStatsWidth := 25
@@ -66,10 +90,20 @@ func (m model) renderCombatView() string {
 		m.styles.Panel.Width(playerStatsWidth).Height(turnOrderContentHeight).Render(playerStatsContent),
 	)
 
+	var bottomSection string
+	if m.combat.isEnemyTurnInProgress {
+		enemyName := m.combat.turnOrder[m.combat.turnIndex].GetName()
+		actionText := fmt.Sprintf("%s is attacking!", enemyName)
+		progressBar := m.combat.enemyActionProgress.View()
+		bottomSection = lipgloss.JoinVertical(lipgloss.Center, actionText, progressBar)
+	} else {
+		bottomSection = m.renderActionMenu()
+	}
+
 	actionMenu := m.styles.Panel.
 		Width(m.width - m.styles.Panel.GetHorizontalFrameSize()).
 		AlignHorizontal(lipgloss.Center).
-		Render(actionMenuContent)
+		Render(bottomSection)
 
 	return lipgloss.JoinVertical(
 		lipgloss.Left,
@@ -98,7 +132,12 @@ func (m model) handleActionSelect(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.combat.subActionCursor = 0
 		case 2:
 			m.combat.player.isDefending = true
-			return m.advanceTurn(), nil
+			m = m.advanceTurn()
+
+			if !m.combat.turnOrder[m.combat.turnIndex].IsPlayer() {
+				return m.startEnemyTurn()
+			}
+			return m, nil
 		case 3:
 			m.combat.actionState = ItemSelect
 			m.combat.subActionCursor = 0
@@ -109,6 +148,18 @@ func (m model) handleActionSelect(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 func (m model) handleSubActionSelect(msg tea.KeyMsg) (model, tea.Cmd) {
 	if msg.String() == "enter" {
+		if m.combat.actionState == ItemSelect {
+			m.stats.hp += 5
+			if m.stats.hp > 100 {
+				m.stats.hp = 100
+			}
+			m = m.advanceTurn()
+
+			if !m.combat.turnOrder[m.combat.turnIndex].IsPlayer() {
+				return m.startEnemyTurn()
+			}
+			return m, nil
+		}
 		m.combat.actionState = TargetSelect
 		m.combat.targetCursor = 0
 	}
@@ -116,40 +167,58 @@ func (m model) handleSubActionSelect(msg tea.KeyMsg) (model, tea.Cmd) {
 }
 
 func (m model) handleTargetSelect(msg tea.KeyMsg) (model, tea.Cmd) {
+	aliveEnemies := []*Foe{}
+
+	for _, e := range m.combat.enemies {
+		if e.GetHP() > 0 {
+			aliveEnemies = append(aliveEnemies, e)
+		}
+	}
+
+	if len(aliveEnemies) == 0 {
+		m.state = StateGame
+		m.combat = nil
+		return m, nil
+	}
+
 	switch msg.String() {
-	case "up", "w":
+	case "left", "a":
 		if m.combat.targetCursor > 0 {
 			m.combat.targetCursor--
 		}
-	case "down", "s":
-		if m.combat.targetCursor < len(m.combat.enemies)-1 {
+	case "right", "d":
+		if m.combat.targetCursor < len(aliveEnemies)-1 {
 			m.combat.targetCursor++
 		}
 	case "enter":
-		target := m.combat.enemies[m.combat.targetCursor]
+		target := aliveEnemies[m.combat.targetCursor]
 
 		if m.combat.actionCursor == 0 {
 			target.TakeDamage(10)
-		} else if m.combat.actionCursor == 1 {
+		}
+		if m.combat.actionCursor == 1 {
 			target.TakeDamage(15)
 		}
 
 		if target.GetHP() <= 0 {
-			var newEnemies []*Foe
-			for i, e := range m.combat.enemies {
-				if i != m.combat.targetCursor {
-					newEnemies = append(newEnemies, e)
+			hasAliveEnemies := false
+			for _, e := range m.combat.enemies {
+				if e.GetHP() > 0 {
+					hasAliveEnemies = true
+					break
 				}
 			}
-			m.combat.enemies = newEnemies
-
-			if len(m.combat.enemies) == 0 {
-				m.state = StateMenu
+			if !hasAliveEnemies {
+				m.state = StateGame
 				m.combat = nil
 				return m, nil
 			}
 		}
-		return m.advanceTurn(), nil
+		m = m.advanceTurn()
+		if len(m.combat.turnOrder) > 0 && !m.combat.turnOrder[m.combat.turnIndex].IsPlayer() {
+			return m.startEnemyTurn()
+		}
+		return m, nil
 	}
 	return m, nil
 }
@@ -252,4 +321,10 @@ func (m model) advanceTurn() model {
 	m.combat.actionState = ActionSelect
 	m.combat.player.isDefending = false
 	return m
+}
+
+func (m model) startEnemyTurn() (model, tea.Cmd) {
+	m.combat.isEnemyTurnInProgress = true
+	m.combat.enemyActionProgress.Width = m.width - m.styles.Panel.GetHorizontalFrameSize()
+	return m, enemyTickCmd()
 }

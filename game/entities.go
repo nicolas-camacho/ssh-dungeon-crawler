@@ -3,6 +3,8 @@ package game
 import (
 	"math/rand"
 	"sort"
+
+	"github.com/charmbracelet/bubbles/progress"
 )
 
 type combatActionState int
@@ -94,11 +96,18 @@ func newTestCombatState() *CombatState {
 
 	turnOrder := calculateTurnOrder(playerEntity, enemies)
 
+	enemyProgressBar := progress.New(
+		progress.WithGradient(string(indigo), string(orange)),
+		progress.WithoutPercentage(),
+	)
+
 	return &CombatState{
-		player:      playerEntity,
-		enemies:     enemies,
-		turnOrder:   turnOrder,
-		turnIndex:   0,
-		actionState: ActionSelect,
+		player:                playerEntity,
+		enemies:               enemies,
+		turnOrder:             turnOrder,
+		turnIndex:             0,
+		actionState:           ActionSelect,
+		isEnemyTurnInProgress: false,
+		enemyActionProgress:   enemyProgressBar,
 	}
 }

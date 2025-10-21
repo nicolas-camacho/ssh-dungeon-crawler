@@ -5,6 +5,7 @@ import (
 	"math/rand"
 	"strings"
 
+	"github.com/charmbracelet/bubbles/progress"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 )
@@ -93,12 +94,19 @@ func (m model) updateGame(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 				turnOrder := calculateTurnOrder(playerEntity, enemies)
 
+				enemyProgressBar := progress.New(
+					progress.WithGradient(string(indigo), string(orange)),
+					progress.WithoutPercentage(),
+				)
+
 				m.combat = &CombatState{
-					player:      playerEntity,
-					enemies:     enemies,
-					turnOrder:   turnOrder,
-					turnIndex:   0,
-					actionState: ActionSelect,
+					player:                playerEntity,
+					enemies:               enemies,
+					turnOrder:             turnOrder,
+					turnIndex:             0,
+					actionState:           ActionSelect,
+					isEnemyTurnInProgress: false,
+					enemyActionProgress:   enemyProgressBar,
 				}
 
 				newRoom.Type = Empty

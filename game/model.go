@@ -40,14 +40,16 @@ type floor struct {
 }
 
 type CombatState struct {
-	player          *Player
-	enemies         []*Foe
-	turnOrder       []CombatEntity
-	turnIndex       int
-	actionState     combatActionState
-	actionCursor    int
-	subActionCursor int
-	targetCursor    int
+	player                *Player
+	enemies               []*Foe
+	turnOrder             []CombatEntity
+	turnIndex             int
+	actionState           combatActionState
+	actionCursor          int
+	subActionCursor       int
+	targetCursor          int
+	isEnemyTurnInProgress bool
+	enemyActionProgress   progress.Model
 }
 
 type model struct {
