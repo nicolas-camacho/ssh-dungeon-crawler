@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"flag"
 	"fmt"
 	"log"
 	"os"
@@ -14,38 +15,15 @@ import (
 	"github.com/charmbracelet/wish"
 	"github.com/charmbracelet/wish/bubbletea"
 	"github.com/charmbracelet/wish/logging"
+	"github.com/joho/godotenv"
 
 	"ssh-dungeon-crawler/game"
 )
 
-const (
-	host = "0.0.0.0"
-	port = "2222" // El puerto interno donde escucha la app
-)
-
-// --- Modelo de Prueba Súper Simple ---
-type helloModel struct{}
-
-func (m helloModel) Init() tea.Cmd { return nil }
-
-func (m helloModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	switch msg := msg.(type) {
-	case tea.KeyMsg:
-		switch msg.String() {
-		case "q", "ctrl+c":
-			return m, tea.Quit
-		}
+func init() {
+	if err := godotenv.Load(); err != nil {
+		log.Println("No .env file found, proceeding without it")
 	}
-	return m, nil
-}
-
-func (m helloModel) View() string {
-	return "\n\n  ¡Hola Mundo desde Fly.io! Si ves esto, la conexión funciona.\n\n  Presiona 'q' para salir.\n\n"
-}
-
-func simpleHandler(s ssh.Session) (tea.Model, []tea.ProgramOption) {
-	// Esta función no depende de nada más, solo crea el modelo simple.
-	return helloModel{}, []tea.ProgramOption{tea.WithAltScreen()}
 }
 
 func programHandler(s ssh.Session) (tea.Model, []tea.ProgramOption) {
@@ -61,38 +39,68 @@ func programHandler(s ssh.Session) (tea.Model, []tea.ProgramOption) {
 }
 
 func main() {
+	sshMode := flag.Bool("ssh", false, "Run in SSH mode")
+	startMode := flag.String("mode", "normal", "Starting mode: normal or test-combat")
+	flag.Parse()
 
 	if err := game.LoadGameData(); err != nil {
 		log.Fatalf("Failed to load game data: %v", err)
 	}
 
-	s, err := wish.NewServer(
-		wish.WithAddress(fmt.Sprintf("%s:%s", host, port)),
-		wish.WithHostKeyPath("ssh_host_key"),
-		wish.WithMiddleware(
-			bubbletea.Middleware(simpleHandler),
-			logging.Middleware(),
-		),
-	)
-	if err != nil {
-		log.Fatalln(err)
-	}
+	if *sshMode {
+		log.Println("Running in SSH mode...")
 
-	done := make(chan os.Signal, 1)
-	signal.Notify(done, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
-	log.Printf("Starting SSH server on %s:%s", host, port)
+		host := os.Getenv("SSH_HOST")
+		if host == "" {
+			host = "0.0.0.0"
+		}
+		port := os.Getenv("SSH_PORT")
+		if port == "" {
+			port = "2222"
+		}
 
-	go func() {
-		if err = s.ListenAndServe(); err != nil {
+		s, err := wish.NewServer(
+			wish.WithAddress(fmt.Sprintf("%s:%s", host, port)),
+			wish.WithHostKeyPath("ssh_host_key"),
+			wish.WithMiddleware(
+				bubbletea.Middleware(programHandler),
+				logging.Middleware(),
+			),
+		)
+		if err != nil {
+			log.Fatalf("failed to create server: %s", err)
+		}
+
+		done := make(chan os.Signal, 1)
+		signal.Notify(done, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
+		log.Printf("Starting SSH server on %s:%s", host, port)
+		go func() {
+			if err = s.ListenAndServe(); err != nil {
+				log.Fatalln(err)
+			}
+		}()
+		<-done
+		log.Println("Stopping SSH server...")
+		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer func() { cancel() }()
+		if err := s.Shutdown(ctx); err != nil {
 			log.Fatalln(err)
 		}
-	}()
+	} else {
+		log.Println("Running in local terminal mode...")
 
-	<-done
-	log.Println("Stopping SSH server...")
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	defer func() { cancel() }()
-	if err := s.Shutdown(ctx); err != nil {
-		log.Fatalln(err)
+		var startState game.GameState
+		switch *startMode {
+		case "test-combat":
+			startState = game.StateCombat
+		default:
+			startState = game.StateLoading
+		}
+
+		initialModel, options := game.CreateTeaProgram(nil, startState)
+		p := tea.NewProgram(initialModel, options...)
+		if _, err := p.Run(); err != nil {
+			log.Fatalf("Error running program: %v", err)
+		}
 	}
 }
