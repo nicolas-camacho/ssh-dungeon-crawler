@@ -84,12 +84,13 @@ func (p *Player) ModifyStat(stat string, value int) {
 }
 
 type Foe struct {
-	Name    string
-	HP      int
-	MaxHP   int
-	Speed   int
-	Attack  int
-	Defense int
+	Name     string   `json:"name"`
+	HP       int      `json:"hp"`
+	MaxHP    int      `json:"maxHP"`
+	Speed    int      `json:"speed"`
+	Defense  int      `json:"defense"`
+	Strength int      `json:"strength"`
+	Attacks  []Attack `json:"attacks"`
 }
 
 func (e *Foe) GetName() string       { return e.Name }
@@ -103,6 +104,7 @@ func (e *Foe) ModifyStat(stat string, value int) {
 	case "HP":
 		e.HP += value
 	case "Strength":
+		e.Strength += value
 	case "Defense":
 		e.Defense += value
 		if e.Defense < 0 {

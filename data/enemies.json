@@ -1,18 +1,43 @@
 {
   "goblin": {
-    "Name": "Goblin",
-    "HP": 20,
-    "MaxHP": 20,
-    "Speed": 8,
-    "Attack": 5,
-    "Defense": 2
+    "name": "Goblin",
+    "hp": 20,
+    "maxHP": 20,
+    "speed": 5,
+    "defense": 2,
+    "strength": 4,
+    "attacks": [
+      {
+        "name": "Dagger Stab",
+        "sides": 4,
+        "effects": []
+      }
+    ]
   },
   "orc": {
-    "Name": "Orco Fuerte",
-    "HP": 45,
-    "MaxHP": 45,
-    "Speed": 5,
-    "Attack": 12,
-    "Defense": 5
+    "name": "Orc",
+    "hp": 45,
+    "maxHP": 45,
+    "speed": 8,
+    "strength": 6,
+    "defense": 5,
+    "attacks": [
+      {
+        "name": "Axe Swing",
+        "sides": 4,
+        "effects": []
+      },
+      {
+        "name": "Headbutt",
+        "sides": 8,
+        "effects": [
+          {
+            "target": "Self",
+            "stat": "Defense",
+            "sides": -2
+          }
+        ]
+      }
+    ]
   }
 }

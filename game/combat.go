@@ -24,11 +24,24 @@ func (m model) updateCombat(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case enemyTickMsg:
 		if m.combat.enemyActionProgress.Percent() >= 1.0 {
 			enemy := m.combat.turnOrder[m.combat.turnIndex].(*Foe)
-			damage := enemy.Attack
-			if m.combat.player.isDefending {
-				damage /= 2
+			player := m.combat.player
+
+			if len(enemy.Attacks) > 0 {
+				selectedAttack := enemy.Attacks[rand.Intn(len(enemy.Attacks))]
+
+				roll := rand.Intn(selectedAttack.Sides) + 1
+				damage := roll + enemy.Strength - (player.data.stats.defense / 2)
+				if damage < 1 {
+					damage = 1
+				}
+
+				finalDamage := damage
+				if player.isDefending {
+					finalDamage /= 2
+				}
+				player.TakeDamage(finalDamage)
+				m.applyEffects(enemy, player, selectedAttack.Effects)
 			}
-			m.combat.player.TakeDamage(damage)
 
 			m.combat.isEnemyTurnInProgress = false
 			m.combat.enemyActionProgress.SetPercent(0)
@@ -503,7 +516,7 @@ func (m model) startEnemyTurn() (model, tea.Cmd) {
 	return m, enemyTickCmd()
 }
 
-func (m *model) applyEffects(source *Player, target *Foe, effect []Effect) {
+func (m *model) applyEffects(source, target CombatEntity, effect []Effect) {
 	for _, effect := range effect {
 		var value int
 		if effect.Sides > 0 {
@@ -519,6 +532,8 @@ func (m *model) applyEffects(source *Player, target *Foe, effect []Effect) {
 			affectedEntity = target
 		}
 
-		affectedEntity.ModifyStat(effect.Stat, value)
+		if affectedEntity != nil {
+			affectedEntity.ModifyStat(effect.Stat, value)
+		}
 	}
 }
