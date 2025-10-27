@@ -13,4 +13,6 @@ COPY ./data ./data
 
 COPY entrypoint.sh .
 
+RUN chmod +x ./entrypoint.s
+
 CMD ["./entrypoint.sh"]
