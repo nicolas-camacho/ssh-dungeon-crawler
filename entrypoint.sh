@@ -1,5 +1,5 @@
 #!/bin/sh
-# entrypoint.sh
+
 set -e
 
 KEY_FILE="./ssh_host_key"
