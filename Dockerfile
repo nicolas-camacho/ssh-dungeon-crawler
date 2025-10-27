@@ -10,4 +10,7 @@ RUN apk add --no-cache openssh
 WORKDIR /app
 COPY --from=builder /app/server .
 COPY ./data ./data
-CMD sh -c "ssh-keygen -t rsa -b 4096 -f ./ssh_host_key -N '' && ./server"
+
+COPY entrypoint.sh .
+
+CMD ["./entrypoint.sh"]
