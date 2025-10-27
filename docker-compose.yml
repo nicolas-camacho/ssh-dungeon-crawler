@@ -1,0 +1,37 @@
+version: "3.8"
+
+services:
+  ssh-dungeon-crawler:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ssh-dungeon-crawler
+    restart: unless-stopped
+
+    ports:
+      - "2222:2222"
+
+    environment:
+      - SSH_HOST=0.0.0.0
+      - SSH_PORT=2222
+
+    volumes:
+      - ssh-keys:/app/ssh_keys
+
+    healthcheck:
+      test: ["CMD", "nc", "-z", "localhost", "2222"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+    # Agregar logs para debugging
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  ssh-keys:
+  game-data:
