@@ -1,7 +1,16 @@
+#!/bin/sh
+# entrypoint.sh
 set -e
 
-echo "Generando clave de host SSH..."
-ssh-keygen -t rsa -b 4048 -f ./ssh_host_key -N ""
+KEY_FILE="./ssh_host_key"
 
-echo "Iniciando servidor del juego..."
+if [ ! -f "$KEY_FILE" ]; then
+    echo "Host key not found. Generating a new one..."
+    ssh-keygen -t rsa -b 4096 -f "$KEY_FILE" -N ""
+    echo "Host key generated successfully."
+else
+    echo "Existing host key found."
+fi
+
+echo "Starting game server..."
 exec ./server
