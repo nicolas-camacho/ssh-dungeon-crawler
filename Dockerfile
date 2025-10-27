@@ -15,8 +15,8 @@ RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o server .
 # Imagen final
 FROM alpine:latest
 
-# Instalar openssh y bash
-RUN apk add --no-cache openssh-server openssh-keygen bash && \
+# Instalar openssh, bash y dependencias para mejor soporte de terminal
+RUN apk add --no-cache openssh-server openssh-keygen bash ncurses-terminfo && \
     mkdir -p /var/run/sshd && \
     chmod 755 /var/run/sshd
 
