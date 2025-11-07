@@ -15,6 +15,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/ssh"
 	"github.com/charmbracelet/wish"
+	"github.com/charmbracelet/wish/activeterm"
 	"github.com/charmbracelet/wish/bubbletea"
 	"github.com/charmbracelet/wish/logging"
 	"github.com/joho/godotenv"
@@ -93,6 +94,7 @@ func main() {
 			wish.WithMiddleware(
 				bubbletea.Middleware(programHandler),
 				logging.Middleware(),
+				activeterm.Middleware(),
 			),
 			// Configuraciones adicionales para mejorar compatibilidad
 			wish.WithPublicKeyAuth(func(ctx ssh.Context, key ssh.PublicKey) bool {
