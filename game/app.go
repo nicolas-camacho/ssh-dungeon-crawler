@@ -17,7 +17,7 @@ func CreateTeaProgram(s ssh.Session, startState GameState) (tea.Model, []tea.Pro
 		state:      startState,
 		menuCursor: 0,
 		progress:   prog,
-		styles:     newStyles(),
+		styles:     newStyles(s),
 	}
 
 	if startState == StateCombat {
