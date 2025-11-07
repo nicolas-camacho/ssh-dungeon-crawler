@@ -1,6 +1,10 @@
 package game
 
-import "github.com/charmbracelet/lipgloss"
+import (
+	"github.com/charmbracelet/lipgloss"
+	"github.com/charmbracelet/ssh"
+	"github.com/charmbracelet/wish/bubbletea"
+)
 
 var (
 	orange         = lipgloss.Color("#F25912")
@@ -22,17 +26,18 @@ type styles struct {
 	StatsArt    lipgloss.Style
 }
 
-func newStyles() styles {
+func newStyles(s ssh.Session) styles {
+	renderer := bubbletea.MakeRenderer(s)
 	return styles{
-		Title:       lipgloss.NewStyle().Foreground(orange).Bold(true),
-		Selected:    lipgloss.NewStyle().Foreground(indigo).Bold(true),
-		Faint:       lipgloss.NewStyle().Faint(true),
-		Help:        lipgloss.NewStyle().Foreground(orange),
-		Panel:       lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(indigo),
-		MapBorder:   lipgloss.NewStyle().Border(lipgloss.DoubleBorder()).BorderForeground(indigo),
-		Player:      lipgloss.NewStyle().Width(3).Align(lipgloss.Center).Foreground(orange).SetString("[@]"),
-		Room:        lipgloss.NewStyle().Width(3).Align(lipgloss.Center),
-		RoomSpecial: lipgloss.NewStyle().Foreground(indigo),
-		StatsArt:    lipgloss.NewStyle().Foreground(orange).Bold(true).Margin(1, 2),
+		Title:       renderer.NewStyle().Foreground(orange).Bold(true),
+		Selected:    renderer.NewStyle().Foreground(indigo).Bold(true),
+		Faint:       renderer.NewStyle().Faint(true),
+		Help:        renderer.NewStyle().Foreground(orange),
+		Panel:       renderer.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(indigo),
+		MapBorder:   renderer.NewStyle().Border(lipgloss.DoubleBorder()).BorderForeground(indigo),
+		Player:      renderer.NewStyle().Width(3).Align(lipgloss.Center).Foreground(orange).SetString("[@]"),
+		Room:        renderer.NewStyle().Width(3).Align(lipgloss.Center),
+		RoomSpecial: renderer.NewStyle().Foreground(indigo),
+		StatsArt:    renderer.NewStyle().Foreground(orange).Bold(true).Margin(1, 2),
 	}
 }
